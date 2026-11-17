@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>nLab — mathematics, physics and philosophy</title>
 <meta name="description" content="A wiki for collaborative work on mathematics, physics, and philosophy — especially from the higher structures point of view. Redesign prototype.">
-<script>/* apply the chosen design before first paint */(function(){var t=null;try{t=new URLSearchParams(location.search).get('theme');if(/^(folio|lumen|prism)$/.test(t||''))localStorage.setItem('nlab-theme',t);else t=localStorage.getItem('nlab-theme')}catch(e){}document.documentElement.dataset.theme=/^(folio|lumen|prism)$/.test(t||'')?t:'folio'})();</script>
+<script>/* apply the chosen design before first paint */(function(){var t=null;try{t=new URLSearchParams(location.search).get('theme');if(/^(folio|lumen|prism|meniscus)$/.test(t||''))localStorage.setItem('nlab-theme',t);else t=localStorage.getItem('nlab-theme')}catch(e){}document.documentElement.dataset.theme=/^(folio|lumen|prism|meniscus)$/.test(t||'')?t:'folio'})();</script>
 </head>
 <body id="top">
 <div class="progress"></div>
@@ -35,9 +35,18 @@
 
 <main>
 <!-- ================= HERO: one message, one action (search) ================= -->
-<section class="hero">
+<section class="hero" data-parallax-host>
+  <div class="px-layer" aria-hidden="true">
+    <span style="top:6%;left:41%;font-size:84px" data-parallax="-0.30" data-depth="14">∫</span>
+    <span style="top:64%;left:3%;font-size:54px" data-parallax="-0.55" data-depth="22">⊗</span>
+    <span style="top:12%;right:4%;font-size:46px" data-parallax="-0.20" data-depth="10">(∞,1)</span>
+    <span style="top:80%;left:44%;font-size:40px" data-parallax="-0.45" data-depth="18">π₁(X)</span>
+    <span style="top:2%;left:4%;font-size:36px" data-parallax="-0.15" data-depth="8">Hom(A,B)</span>
+    <span style="top:86%;right:8%;font-size:64px" data-parallax="-0.65" data-depth="26">∞</span>
+    <span style="top:44%;left:47%;font-size:30px" data-parallax="-0.25" data-depth="12">⊣</span>
+  </div>
   <div class="wrap hero-grid">
-    <div class="hero-copy">
+    <div class="hero-copy" data-parallax="0.06">
       <p class="kicker"><span class="kdot"></span>The nLab wiki</p>
       <h1 class="title">Mathematics, physics &amp; philosophy — <em>linked.</em></h1>
       <p class="lead">A collaborative wiki written by researchers, especially from the higher structures point of view. Free to read, cite and improve.</p>
@@ -53,7 +62,7 @@
         <a href="page.html?p=adjoint+functor">adjoint functor</a>
       </p>
     </div>
-    <figure class="plate hero-plate">
+    <figure class="plate hero-plate" data-parallax="-0.08" data-depth="6">
       <canvas class="kgraph" aria-label="An interactive diagram of nLab concepts and the links between them"></canvas>
       <figcaption><b>Fig. 1</b><span>A fragment of the web of concepts. Drag to turn; click a concept to open it.</span></figcaption>
     </figure>
@@ -69,9 +78,9 @@
       <a class="more" href="https://ncatlab.org/nlab/latest_revisions">All recent changes <i data-lucide="arrow-up-right"></i></a>
     </header>
 
-    <div class="new-grid">
+    <div class="new-grid" data-parallax-host>
       <!-- Column 1: featured article -->
-      <article class="card col-card reveal">
+      <article class="card col-card reveal" data-parallax="0">
         <p class="col-head"><i data-lucide="book-marked"></i>Featured article</p>
         <a class="feat" href="page.html?p=Hopf+fibration">
           <figure><img src="img/hopf.jpg" alt="Visualization of the Hopf fibration" data-credit="hopf" loading="lazy"></figure>
@@ -84,7 +93,7 @@
       </article>
 
       <!-- Column 2: recent edits (live) -->
-      <article class="card col-card reveal d1">
+      <article class="card col-card reveal d1" data-parallax="-0.025">
         <p class="col-head"><i class="live-dot"></i>Recent edits <small id="edits-when"></small></p>
         <ol class="edits" id="edits" aria-live="polite">
           <li class="edits-loading">Loading recent edits…</li>
@@ -93,7 +102,7 @@
       </article>
 
       <!-- Column 3: news -->
-      <article class="card col-card reveal d2">
+      <article class="card col-card reveal d2" data-parallax="-0.05">
         <p class="col-head"><i data-lucide="newspaper"></i>News</p>
         <ul class="news-items">
           <li><a href="cqts.html#Symposium2026"><time>16 Nov 2026</time><b>CQTS Research Symposium 2026</b><span>Four talks, including Urs Schreiber on new pathways to topological order.</span></a></li>
@@ -115,7 +124,7 @@
       <a class="more" href="https://ncatlab.org/nlab/all_pages">All pages <i data-lucide="arrow-up-right"></i></a>
     </header>
 
-    <div class="fields">
+    <div class="fields" data-parallax-host>
       <article class="card field math reveal">
         <div class="field-top"><div class="field-icon"><i data-lucide="sigma"></i></div><h3 class="h3">Mathematics</h3></div>
         <p>Foundations, category theory, homotopy theory, geometry and algebra.</p>
@@ -127,7 +136,7 @@
         </ul>
         <a class="more" href="page.html?p=mathematics">All mathematics <i data-lucide="arrow-right"></i></a>
       </article>
-      <article class="card field phys reveal d1">
+      <article class="card field phys reveal d1" data-parallax="-0.02">
         <div class="field-top"><div class="field-icon"><i data-lucide="atom"></i></div><h3 class="h3">Physics</h3></div>
         <p>Mechanics, field theory, quantization, gauge theory and strings.</p>
         <ul>
@@ -138,7 +147,7 @@
         </ul>
         <a class="more" href="page.html?p=physics">All physics <i data-lucide="arrow-right"></i></a>
       </article>
-      <article class="card field phil reveal d2">
+      <article class="card field phil reveal d2" data-parallax="-0.04">
         <div class="field-top"><div class="field-icon"><i data-lucide="lightbulb"></i></div><h3 class="h3">Philosophy</h3></div>
         <p>Logic, modalities and the philosophy of physics.</p>
         <ul>

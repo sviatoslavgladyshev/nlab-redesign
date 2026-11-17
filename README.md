@@ -11,6 +11,18 @@ npm install
 npm run dev        # http://localhost:5173 — articles and latest edits load live via a dev proxy
 ```
 
+## Designs
+
+One site, four switchable designs (chooser on first visit, switcher at the bottom of every page,
+shareable links via `?theme=`):
+
+| Design | Look |
+|---|---|
+| `folio` | paper & ink notebook |
+| `lumen` | light, airy, glassy (Apple-inspired) |
+| `prism` | tonal, rounded, colourful (Material-inspired) |
+| `meniscus` | real liquid glass — refraction via [simple-liquid-glass](https://github.com/lucaperullo/simple-liquid-glass) (`<liquid-glass>` web component, loaded only for this design) |
+
 ## How content is loaded
 
 ncatlab.org does not send CORS headers, so a browser cannot fetch it directly.

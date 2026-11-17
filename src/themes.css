@@ -296,3 +296,107 @@
 
 /* keep content clear of the floating switcher */
 footer { padding-bottom: 90px; }
+
+/* ===================== MENISCUS (liquid glass) =====================
+   Glass plates (<liquid-glass class="lg-plate">, simple-liquid-glass) are injected by theme.js
+   behind each surface; the vivid .liquid-bg layer gives them something to refract. */
+[data-theme="meniscus"] {
+  --paper: transparent; --paper-2: rgba(255, 255, 255, .35); --sheet: rgba(255, 255, 255, .28);
+  --ink: #0d1326; --ink-2: #2a3150; --muted: #4a5272; --faint: #6d7493;
+  --rule: rgba(13, 19, 38, .14);
+  --red: #c2185b; --blue: #1d4ed8; --green: #047857; --gold: #b45309;
+  --red-soft: rgba(255, 255, 255, .45); --blue-soft: rgba(255, 255, 255, .45); --green-soft: rgba(255, 255, 255, .45);
+  --display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter Variable', sans-serif;
+  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter Variable', sans-serif;
+  --serif: var(--font);
+  --radius: 30px;
+  --edge: 1px solid transparent;
+  --sh-1: none; --sh-2: 0 10px 40px -12px rgba(13, 19, 38, .25);
+  --sh-3: 0 18px 50px -14px rgba(13, 19, 38, .35); --sh-4: var(--sh-3);
+  --shadow: var(--sh-2); --shadow-lg: var(--sh-3);
+  --sh-accent: 0 12px 30px -10px rgba(29, 78, 216, .55); --sh-focus: 0 0 0 3px rgba(255, 255, 255, .7);
+  --lift: translateY(-4px);
+  --dg-1: #1d4ed8; --dg-2: #7c3aed; --dg-3: #db2777; --dg-4: #0891b2;
+  --dg-ink: #0d1326; --dg-hi: #db2777; --dg-node: #ffffff;
+}
+[data-theme="meniscus"] body { background: #e9ecff; background-image: none; }
+/* the refraction source: colour fields + grid lines + rings, fixed behind everything */
+.liquid-bg { position: fixed; inset: 0; z-index: -2; pointer-events: none; overflow: hidden;
+  background:
+    radial-gradient(38vmax 38vmax at 12% 18%, #5b8cff 0%, transparent 60%),
+    radial-gradient(34vmax 34vmax at 88% 12%, #ff6fb1 0%, transparent 60%),
+    radial-gradient(40vmax 40vmax at 78% 82%, #ffb547 0%, transparent 62%),
+    radial-gradient(36vmax 36vmax at 18% 88%, #3fd6b5 0%, transparent 60%),
+    radial-gradient(30vmax 30vmax at 50% 50%, #b48cff 0%, transparent 65%),
+    #eef0ff; }
+.liquid-bg::before { content: ""; position: absolute; inset: 0;
+  background-image: linear-gradient(rgba(13,19,38,.16) 1px, transparent 1px), linear-gradient(90deg, rgba(13,19,38,.16) 1px, transparent 1px);
+  background-size: 44px 44px; }
+.liquid-bg i { position: absolute; border-radius: 50%; border: 10px solid rgba(255,255,255,.55); }
+.liquid-bg i:nth-child(1) { width: 34vmax; height: 34vmax; left: -6vmax; top: 30%; border-color: rgba(29,78,216,.35); }
+.liquid-bg i:nth-child(2) { width: 22vmax; height: 22vmax; right: 6%; top: 8%; border-color: rgba(219,39,119,.35); }
+.liquid-bg i:nth-child(3) { width: 28vmax; height: 28vmax; right: -8vmax; bottom: -6vmax; border-color: rgba(8,145,178,.35); }
+.liquid-bg b { position: absolute; font: italic 600 22vmax/1 Georgia, serif; color: rgba(13,19,38,.09); left: 52%; top: 18%; }
+
+.lg-host { position: relative; isolation: isolate; }
+.lg-plate { position: absolute !important; inset: 0; z-index: -1; pointer-events: none; display: block; border-radius: inherit; }
+[data-theme="meniscus"] .reveal { opacity: 1 !important; transform: none !important; transition: none !important; }  /* opacity on glass ancestors blanks backdrop-filter */
+[data-theme="meniscus"] .card, [data-theme="meniscus"] .plate, [data-theme="meniscus"] .definition, [data-theme="meniscus"] .proof,
+[data-theme="meniscus"] .big-search, [data-theme="meniscus"] .nav, [data-theme="meniscus"] .tabs-bar, [data-theme="meniscus"] .principles li,
+[data-theme="meniscus"] .page-head, [data-theme="meniscus"] .a-hero, [data-theme="meniscus"] .spotlight, [data-theme="meniscus"] .talk.lead-talk { background: transparent; }
+[data-theme="meniscus"] .title, [data-theme="meniscus"] .h2, [data-theme="meniscus"] .h3, [data-theme="meniscus"] h4, [data-theme="meniscus"] .brand { font-variation-settings: normal; font-weight: 700; letter-spacing: -0.035em; }
+[data-theme="meniscus"] .title em, [data-theme="meniscus"] .h2 em, [data-theme="meniscus"] .def-body em { font-style: normal; font-weight: 700; background: linear-gradient(90deg, #1d4ed8, #7c3aed, #db2777); -webkit-background-clip: text; background-clip: text; color: transparent; }
+[data-theme="meniscus"] :is(.kicker, .label, .col-head, .sec-aside, .crumbs, .popular span, .news-items time, .edits a time, .colloq-list time, .colloq-list .kind, .plate-card .no, .def-head, .cal span, .foot-cols h6) { font-family: var(--font); letter-spacing: 0; text-transform: none; font-weight: 600; }
+[data-theme="meniscus"] .sec-head::after { height: 1px; background: rgba(13,19,38,.2); }
+[data-theme="meniscus"] .sec-no { font-family: var(--display); font-style: normal; font-weight: 800; color: rgba(13,19,38,.85); font-variation-settings: normal; }
+[data-theme="meniscus"] .nav { border-bottom: 0; backdrop-filter: none; -webkit-backdrop-filter: none; margin: 10px auto 0; max-width: calc(var(--maxw) + 20px); border-radius: 22px; top: 10px; }
+[data-theme="meniscus"] .nav .wrap { height: 58px; }
+[data-theme="meniscus"] .nav-links a:hover, [data-theme="meniscus"] .nav-links a[aria-current] { background: rgba(255,255,255,.4); box-shadow: none; }
+[data-theme="meniscus"] .nav-search { background: rgba(255,255,255,.35); border-color: rgba(255,255,255,.5); }
+[data-theme="meniscus"] .big-search { border-radius: 22px; border: 0; }
+[data-theme="meniscus"] .big-search button, [data-theme="meniscus"] .btn, [data-theme="meniscus"] .pill { background: rgba(13,19,38,.88); border-color: transparent; color: #fff; }
+[data-theme="meniscus"] .btn.ghost, [data-theme="meniscus"] .pill.ghost { background: transparent; color: var(--ink); }
+[data-theme="meniscus"] .more { border-bottom-color: rgba(13,19,38,.35); }
+[data-theme="meniscus"] .popular a { background: transparent; border: 0; }
+[data-theme="meniscus"] .plate figcaption { background: rgba(255,255,255,.3); border-top: 1px solid rgba(255,255,255,.5); }
+[data-theme="meniscus"] .hero-plate canvas { background: transparent; }
+[data-theme="meniscus"] .px-layer span { opacity: .22; font-style: normal; font-weight: 700; }
+[data-theme="meniscus"] .field-icon, [data-theme="meniscus"] .step-ic, [data-theme="meniscus"] .principles .ic, [data-theme="meniscus"] .cal { border: 0; background: rgba(255,255,255,.5) !important; }
+[data-theme="meniscus"] .avatar { border: 0; box-shadow: 0 4px 12px rgba(13,19,38,.2); }
+[data-theme="meniscus"] .field li a, [data-theme="meniscus"] .edits li, [data-theme="meniscus"] .news-items li, [data-theme="meniscus"] .colloq-list li { border-bottom: 1px solid rgba(13,19,38,.1); }
+[data-theme="meniscus"] .feat figure, [data-theme="meniscus"] .plate-card .ph, [data-theme="meniscus"] .spot-img, [data-theme="meniscus"] .pillar .pic { border: 0; border-radius: 20px; }
+[data-theme="meniscus"] .plate-card .ph { margin: 10px 10px 0; }
+[data-theme="meniscus"] .step + .step { border-left: 1px solid rgba(13,19,38,.12); }
+[data-theme="meniscus"] .step:not(:last-child)::after { background: transparent; }
+[data-theme="meniscus"] .step-ic::after { background: #1d4ed8; border: 0; }
+[data-theme="meniscus"] .definition { border-left: 0; }
+[data-theme="meniscus"] .definition::after { display: none; }
+[data-theme="meniscus"] .qed { border-top: 1px solid rgba(13,19,38,.15); }
+[data-theme="meniscus"] .page-head, [data-theme="meniscus"] .a-hero { border-bottom: 0; }
+[data-theme="meniscus"] .tabs-bar { border-bottom: 0; margin: 0 auto; max-width: calc(var(--maxw) + 20px); border-radius: 18px; top: 78px; }
+[data-theme="meniscus"] .tabs a.on { border-bottom-color: #1d4ed8; }
+[data-theme="meniscus"] .talk .links a { border: 0; background: rgba(255,255,255,.45); }
+[data-theme="meniscus"] .facts > div { border-left: 0; border-radius: 22px; background: rgba(255,255,255,.35); }
+[data-theme="meniscus"] footer { background: rgba(13,19,38,.82); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+[data-theme="meniscus"] .a-body [class^="num_"], [data-theme="meniscus"] .a-body [class^="un_"] { border: 0; box-shadow: none; background: rgba(255,255,255,.55); border-radius: 22px; }
+[data-theme="meniscus"] .a-body .maruku-equation, [data-theme="meniscus"] .a-body pre { background: rgba(255,255,255,.6); }
+[data-theme="meniscus"] .side-tabs { border: 0; background: rgba(255,255,255,.4); }
+[data-theme="meniscus"] .s-item { background: rgba(255,255,255,.5); border: 0; box-shadow: none; }
+/* design switcher in this design is glass too */
+[data-theme="meniscus"] .design-switch { background: transparent; color: var(--ink); box-shadow: 0 12px 40px -10px rgba(13,19,38,.4); backdrop-filter: none; -webkit-backdrop-filter: none; }
+[data-theme="meniscus"] .design-switch .ds-label { color: var(--muted); }
+[data-theme="meniscus"] .design-switch button { color: var(--ink); }
+[data-theme="meniscus"] .design-switch button:hover { background: rgba(255,255,255,.35); }
+[data-theme="meniscus"] .design-switch button[aria-pressed="true"] { background: rgba(13,19,38,.88); color: #fff; }
+
+/* chooser: four cards */
+.dc-grid { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 1000px) { .dc-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { .dc-grid { grid-template-columns: 1fr; } }
+.dc-meniscus { position: relative; overflow: hidden; color: #0d1326;
+  background: radial-gradient(120px 120px at 15% 20%, #5b8cff, transparent 70%), radial-gradient(120px 120px at 90% 15%, #ff6fb1, transparent 70%),
+              radial-gradient(140px 140px at 80% 95%, #ffb547, transparent 70%), radial-gradient(120px 120px at 10% 95%, #3fd6b5, transparent 70%), #eef0ff; }
+.dc-meniscus b { font-family: -apple-system, 'Inter Variable', sans-serif; font-weight: 700; letter-spacing: -0.04em; position: relative; }
+.dc-meniscus b i { font-style: normal; background: linear-gradient(90deg, #1d4ed8, #db2777); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.dc-meniscus .dc-btn { background: rgba(13,19,38,.88); color: #fff; border-radius: 999px; }
+.dc-meniscus .dc-chip { width: 70px; height: 26px; border-radius: 999px; background: rgba(255,255,255,.25); backdrop-filter: blur(6px) saturate(160%); -webkit-backdrop-filter: blur(6px) saturate(160%); box-shadow: inset 0 1px 1px rgba(255,255,255,.9), inset 0 -1px 1px rgba(13,19,38,.15), 0 6px 16px rgba(13,19,38,.15); }

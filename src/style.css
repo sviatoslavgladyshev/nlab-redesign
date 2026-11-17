@@ -537,3 +537,18 @@ main { display: block; }
   --dg-ink: #1c1b1f; --dg-hi: #a41e32; --dg-node: #fffdf8;
 }
 .page-head { padding-bottom: 36px; }
+
+/* ---------- Parallax layers ---------- */
+.hero, .page-head { position: relative; overflow: hidden; }
+.hero-grid, .page-head > .wrap { position: relative; z-index: 1; }
+.px-layer { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+.px-layer span { position: absolute; font-family: var(--display); font-style: italic; line-height: 1; white-space: nowrap; color: var(--ink); opacity: .07; will-change: translate; user-select: none; }
+.px-layer span:nth-child(4n+1) { color: var(--dg-1); opacity: .16; }
+.px-layer span:nth-child(4n+2) { color: var(--dg-3); opacity: .14; }
+.px-layer span:nth-child(4n+3) { color: var(--dg-2); opacity: .14; }
+[data-theme="lumen"] .px-layer span, [data-theme="prism"] .px-layer span { font-style: normal; font-weight: 600; }
+[data-parallax] { will-change: translate; }
+.px-img { scale: 1.16; will-change: translate; }
+@media (max-width: 720px) { .px-layer span { font-size: 70% !important; opacity: .06; } }
+@media (prefers-reduced-motion: reduce) { .px-img { scale: 1; } }
+.spot-img, .pillar .pic, .talk-img, .feat figure, .plate-card .ph, .news .news-img { overflow: hidden; }
