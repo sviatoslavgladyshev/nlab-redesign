@@ -5,6 +5,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Cpath d=%22M16 3c5 6 5 14 0 26C11 17 11 9 16 3z%22 fill=%22%23193c78%22/%3E%3Cpath d=%22M4 12c7-1 13 3 12 17C9 25 4 19 4 12z%22 fill=%22%23226622%22/%3E%3Cpath d=%22M28 12c-7-1-13 3-12 17 7-4 12-10 12-17z%22 fill=%22%23a41e32%22/%3E%3C/svg%3E">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>nLab</title>
+<script>/* apply the chosen design before first paint */(function(){var t=null;try{t=new URLSearchParams(location.search).get('theme');if(/^(folio|lumen|prism)$/.test(t||''))localStorage.setItem('nlab-theme',t);else t=localStorage.getItem('nlab-theme')}catch(e){}document.documentElement.dataset.theme=/^(folio|lumen|prism)$/.test(t||'')?t:'folio'})();</script>
 </head>
 <body id="top" class="article-page">
 <div class="progress"></div>
@@ -19,12 +20,12 @@
       </svg>
       nLab <small>redesign</small>
     </a>
-    <nav class="nav-links">
-      <a href="./#today"><i data-lucide="newspaper"></i><span>Today</span></a>
-      <a href="./#explore"><i data-lucide="library"></i><span>Explore</span></a>
-      <a href="./#plates"><i data-lucide="telescope"></i><span>Plates</span></a>
+    <nav class="nav-links" aria-label="Main">
+      <a href="./#new"><i data-lucide="newspaper"></i><span>What’s new</span></a>
+      <a href="./#browse"><i data-lucide="library"></i><span>Browse</span></a>
       <a href="./#contribute"><i data-lucide="pen-line"></i><span>Contribute</span></a>
-      <a href="./#cqts"><i data-lucide="orbit"></i><span>CQTS</span></a>
+      <a href="./#about"><i data-lucide="book-open"></i><span>About</span></a>
+      <a href="cqts.html"><i data-lucide="orbit"></i><span>CQTS</span></a>
     </nav>
     <form class="nav-search" role="search">
       <i data-lucide="search"></i>
@@ -71,7 +72,7 @@
       <div><h6>Content</h6><a href="page.html?p=mathematics"><i data-lucide="sigma"></i>Mathematics</a><a href="page.html?p=physics"><i data-lucide="atom"></i>Physics</a><a href="page.html?p=philosophy"><i data-lucide="lightbulb"></i>Philosophy</a></div>
       <div><h6>Resources</h6><a href="page.html?p=math+resources">Mathematics</a><a href="page.html?p=physics+resources">Physics</a><a href="page.html?p=philosophy+resources">Philosophy</a></div>
       <div><h6>Community</h6><a href="https://nforum.ncatlab.org/"><i data-lucide="messages-square"></i>nForum</a><a href="https://ncatlab.org/nlab/latest_revisions"><i data-lucide="history"></i>Latest changes</a><a href="page.html?p=HowTo"><i data-lucide="book-open"></i>HowTo</a></div>
-      <div><h6>CQTS</h6><a href="./#cqts">Overview</a><a href="./#Symposium2026">Symposium 2026</a><a href="./#GladyshevSymposium2026">Gladyshev talk</a></div>
+      <div><h6>CQTS</h6><a href="cqts.html">Overview</a><a href="cqts.html#Symposium2026">Symposium 2026</a><a href="cqts.html#colloquium">Colloquium</a></div>
     </div>
     <div class="foot-base"><span id="foot-source">Article content from ncatlab.org.</span><span>Redesign prototype — not the official nLab.</span></div>
   </div>

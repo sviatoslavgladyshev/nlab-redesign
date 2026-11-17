@@ -1,5 +1,7 @@
 // nLab redesign — shared behaviour (icons, reveal, nav, search, hero diagram)
 import './style.css';
+import './themes.css';
+import './theme.js';
 import {
   createIcons, Search, ArrowRight, ArrowUpRight, Sigma, Atom, Lightbulb, BookOpen, BookMarked, PenLine, Quote,
   MessagesSquare, Sparkles, Shuffle, History, Server, Palette, Radio, Calendar, FileText, Presentation,
@@ -89,14 +91,23 @@ function conceptDiagram(canvas) {
     'homotopy type', 'spectrum', 'cohomology', 'K-theory', 'fiber bundle', 'connection', 'gauge field', 'Lagrangian', 'TQFT',
     'cobordism', 'brane', 'anyon', 'modality', 'type theory', 'Yoneda lemma', 'Kan extension', 'operad',
     'monoidal category', 'Lie algebra', 'supergravity', 'scheme', 'groupoid', 'quantization', 'Hilbert space'];
-  const colors = ['#193c78', '#226622', '#a41e32', '#1c1b1f'];
+  // Colours come from the active design (CSS variables --dg-*), refreshed on theme change
+  let pal = {};
+  const readPalette = () => {
+    const cs = getComputedStyle(document.documentElement), v = (n) => cs.getPropertyValue(n).trim();
+    pal = { nodes: [v('--dg-1'), v('--dg-2'), v('--dg-3'), v('--dg-4')], ink: v('--dg-ink'), hi: v('--dg-hi'), bg: v('--dg-node'),
+      font: v('--serif') || 'Georgia, serif', italic: document.documentElement.dataset.theme === 'folio' || !document.documentElement.dataset.theme };
+  };
+  readPalette();
+  addEventListener('themechange', () => { readPalette(); if (!running) draw(); });
+  const hexA = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
   let seed = 11;
   const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
   const nodes = labels.map((label, i) => {
     // Fibonacci-sphere placement: even spread, no clumps
     const k = (i + 0.5) / labels.length, ph = Math.acos(1 - 2 * k), th = Math.PI * (1 + Math.sqrt(5)) * i;
     const r = 0.78 + rnd() * 0.22;
-    return { label, x: Math.sin(ph) * Math.cos(th) * r, y: Math.cos(ph) * r * 0.85, z: Math.sin(ph) * Math.sin(th) * r, c: colors[i % colors.length] };
+    return { label, x: Math.sin(ph) * Math.cos(th) * r, y: Math.cos(ph) * r * 0.85, z: Math.sin(ph) * Math.sin(th) * r, ci: i % 4 };
   });
   const edges = [];
   nodes.forEach((a, i) => {
@@ -143,7 +154,7 @@ function conceptDiagram(canvas) {
     edges.forEach(([i, j]) => {
       const a = nodes[i], b = nodes[j], depth = clamp(2 / ((a.d + b.d) / 2) - 0.35);
       const lit = hover === i || hover === j;
-      ctx.strokeStyle = lit ? 'rgba(164,30,50,.85)' : `rgba(28,27,31,${0.12 + depth * 0.25})`;
+      ctx.strokeStyle = lit ? hexA(pal.hi, 0.85) : hexA(pal.ink, 0.12 + depth * 0.25);
       ctx.beginPath(); ctx.moveTo(a.sx, a.sy); ctx.lineTo(b.sx, b.sy); ctx.stroke();
       const t = 0.6, px = a.sx + (b.sx - a.sx) * t, py = a.sy + (b.sy - a.sy) * t, ang = Math.atan2(b.sy - a.sy, b.sx - a.sx);
       ctx.fillStyle = ctx.strokeStyle;
@@ -154,13 +165,13 @@ function conceptDiagram(canvas) {
     [...nodes.keys()].sort((a, b) => nodes[b].d - nodes[a].d).forEach((k) => {
       const n = nodes[k], depth = clamp(2.2 / n.d - 0.45), r = 3 + depth * 3.5, lit = k === hover;
       ctx.globalAlpha = 0.35 + depth * 0.65;
-      ctx.fillStyle = '#fffdf8'; ctx.strokeStyle = '#1c1b1f'; ctx.lineWidth = 1.4;
+      ctx.fillStyle = pal.bg; ctx.strokeStyle = pal.italic ? pal.ink : hexA(pal.ink, 0.15); ctx.lineWidth = 1.4;
       ctx.beginPath(); ctx.arc(n.sx, n.sy, r + 2, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = lit ? '#a41e32' : n.c; ctx.beginPath(); ctx.arc(n.sx, n.sy, r - 0.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = lit ? pal.hi : pal.nodes[n.ci]; ctx.beginPath(); ctx.arc(n.sx, n.sy, r - 0.5, 0, Math.PI * 2); ctx.fill();
       // Label only the front of the sphere (plus the hovered node) so labels don't pile up
       if (lit || n.d < camD - 0.15) {
-        ctx.font = `italic ${Math.round(12 + depth * 6)}px 'Source Serif 4 Variable', Georgia, serif`;
-        ctx.fillStyle = lit ? '#a41e32' : '#1c1b1f';
+        ctx.font = `${pal.italic ? 'italic ' : '500 '}${Math.round(12 + depth * 6)}px ${pal.font}`;
+        ctx.fillStyle = lit ? pal.hi : pal.ink;
         ctx.fillText(n.label, n.sx + r + 6, n.sy + 4);
       }
       ctx.globalAlpha = 1;

@@ -109,23 +109,23 @@
 .s-item:hover { border-color: rgba(0,113,227,.4); transform: translateY(-2px); box-shadow: var(--shadow-lg); }
 
 /* ===== Notebook identity overrides ===== */
-.a-hero { padding: 64px 0 44px; background: var(--sheet); border-bottom: 1.5px solid var(--ink); }
+.a-hero { padding: 64px 0 44px; background: var(--sheet); border-bottom: var(--edge); }
 .a-hero .title { font-size: clamp(40px, 6vw, 80px); margin: 18px 0 14px; max-width: 980px; overflow-wrap: anywhere; }
 .crumbs { font-family: var(--mono); font-size: 12px; letter-spacing: .04em; text-transform: uppercase; }
 .crumbs a:hover { color: var(--red); }
 .a-meta { font-family: var(--serif); font-style: italic; font-size: 15px; }
 .a-actions .pill { font-size: 13px; }
-.side-tabs { background: var(--paper-2); border: 1.5px solid var(--ink); border-radius: 12px; }
-.side-tabs button[aria-selected="true"] { background: var(--sheet); box-shadow: 2px 2px 0 var(--ink); }
+.side-tabs { background: var(--paper-2); border: var(--edge); border-radius: 12px; }
+.side-tabs button[aria-selected="true"] { background: var(--sheet); box-shadow: var(--sh-1); }
 .a-toc a { font-family: var(--serif); font-size: 14px; border-left-width: 1.5px; }
 .a-toc a.on { color: var(--red); border-left-color: var(--red); background: linear-gradient(90deg, var(--red-soft), transparent); }
 .skel { background: linear-gradient(90deg, #ebe5d8 0%, #f5f0e6 50%, #ebe5d8 100%); background-size: 200% 100%; }
 .a-body { font-family: var(--serif); font-size: 19px; color: var(--ink-2); }
 .a-body h1, .a-body h2, .a-body h3, .a-body h4 { font-family: var(--display); font-weight: 600; letter-spacing: -0.02em; }
-.a-body h2 { border-top: 1.5px solid var(--ink); }
+.a-body h2 { border-top: var(--edge); }
 .a-body a { color: var(--blue); }
 .a-body .maruku-equation { background: var(--sheet); border: 1.5px solid var(--rule); }
-.a-body [class^="num_"], .a-body [class^="un_"] { border: 1.5px solid var(--ink); border-left: 6px solid var(--env); box-shadow: 3px 3px 0 var(--ink); border-radius: 12px; }
+.a-body [class^="num_"], .a-body [class^="un_"] { border: var(--edge); border-left: 6px solid var(--env); box-shadow: var(--sh-2); border-radius: 12px; }
 .a-body .num_defn, .a-body .un_defn { --env: var(--blue); --env-bg: #f1f4fa; }
 .a-body .num_prop, .a-body .num_theorem, .a-body .num_lemma, .a-body .num_cor,
 .a-body .un_prop, .a-body .un_theorem, .a-body .un_lemma, .a-body .un_cor { --env: var(--red); --env-bg: #fbf1f1; }
@@ -134,6 +134,6 @@
 .a-body [class^="num_"] h6, .a-body [class^="un_"] h6, .a-body .proof h6 { font-family: var(--mono); }
 .a-body blockquote { background: var(--sheet); border-left-color: var(--red); }
 .a-body pre, .a-body code { font-family: var(--mono); }
-.s-item { background: var(--sheet); border: 1.5px solid var(--ink); box-shadow: 2px 2px 0 var(--ink); font-family: var(--serif); font-size: 16px; }
-.s-item:hover { border-color: var(--ink); box-shadow: 4px 4px 0 var(--red); }
+.s-item { background: var(--sheet); border: var(--edge); box-shadow: var(--sh-1); font-family: var(--serif); font-size: 16px; }
+.s-item:hover { border-color: var(--ink); box-shadow: var(--sh-accent); }
 footer { margin-top: 0; }

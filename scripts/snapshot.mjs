@@ -42,7 +42,7 @@ async function get(url) {
 }
 
 // 1. Collect page names from the site sources
-const sources = await Promise.all(['../index.html', '../page.html', '../src/home.js'].map((p) => readFile(new URL(p, import.meta.url), 'utf8')));
+const sources = await Promise.all(['../index.html', '../page.html', '../cqts.html', '../src/home.js'].map((p) => readFile(new URL(p, import.meta.url), 'utf8')));
 const names = new Set();
 for (const src of sources) for (const m of src.matchAll(/page\.html\?p=([^"'#&\s<]+)/g)) names.add(decodeName(m[1]));
 const pool = sources[2].match(/const surprise = \[([\s\S]*?)\];/);

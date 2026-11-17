@@ -25,6 +25,7 @@ export default defineConfig({
       input: {
         main: resolve(import.meta.dirname, 'index.html'),
         page: resolve(import.meta.dirname, 'page.html'),
+        cqts: resolve(import.meta.dirname, 'cqts.html'),
       },
     },
   },
