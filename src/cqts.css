@@ -251,6 +251,7 @@ a.cq-event:hover { box-shadow: 0 16px 40px rgba(40, 10, 80, .12); transform: tra
 }
 .cqts-page .progress { background: linear-gradient(90deg, #57068c, #2448b5); }
 .cqts-page .nav-links a[aria-current] { background: var(--tonal); color: var(--on-tonal); }
+.cqts-page .nav-links .nav-cqts { filter: grayscale(1); opacity: .62; }
 .cqts-page .nav-search:focus-within { box-shadow: 0 0 0 3px rgba(87, 6, 140, .15); }
 .cqts-page .tbtn.primary, .cqts-page .nav-write { background: var(--primary); border-color: var(--primary); }
 .cqts-page .nav-join { color: var(--primary); }
