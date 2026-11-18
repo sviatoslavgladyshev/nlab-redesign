@@ -98,8 +98,18 @@ export const similarPages = (name, limit = 8) => rpc('similar_pages', { p_name: 
 export const pageHistory = (name) => rpc('page_history', { p_name: name });
 export const pagesExist = async (names) => new Set((await rpc('pages_exist', { p_names: names })).map((n) => n.toLowerCase()));
 // publish (new pages, sandboxes, pages started here) or suggest an edit (other nLab pages)
-export const savePage = (name, source, { summary = '', links = [], note = '' } = {}) =>
-  rpc('save_page', { p_name: name, p_source: source, p_summary: summary, p_links: links, p_note: note });
+export async function savePage(name, source, { summary = '', links = [], note = '' } = {}) {
+  const saved = await rpc('save_page', { p_name: name, p_source: source, p_summary: summary, p_links: links, p_note: note });
+  embedPage(name); // keep smart search and related pages up to date (in the background)
+  return saved;
+}
+// (re)compute a page's embedding in the search Edge Function; quietly does nothing if it isn't deployed
+export const embedPage = (name) => fetch(`${URL_}/functions/v1/search`, {
+  method: 'POST',
+  headers: { apikey: KEY, Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json' },
+  body: JSON.stringify({ embed: name }),
+  keepalive: true,
+}).catch(() => {});
 export const suggestEdit = (name, source, note = '') => rpc('suggest_edit', { p_name: name, p_source: source, p_note: note });
 
 /* ---------- smart search (supabase/rag.sql + functions/search) ---------- */

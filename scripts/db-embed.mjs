@@ -86,16 +86,17 @@ function localPages() {
     return { name, summary: summary.get(name) || '', source: existsSync(f) ? readFileSync(f, 'utf8').slice(0, 4000) : '' };
   });
 }
-// names of pages that already have an embedding (1000 per request, the API's page size)
+// names of pages whose embedding is current: present, and made after the page's last change
+// (1000 per request, the API's page size)
 async function embeddedNames() {
   const done = new Set();
   for (let from = 0; ; from += 1000) {
-    const res = await fetch(`${URL_}/rest/v1/pages?select=name&embedding=not.is.null&order=id&offset=${from}&limit=1000`, {
+    const res = await fetch(`${URL_}/rest/v1/pages?select=name,embedded_at,updated_at&embedding=not.is.null&order=id&offset=${from}&limit=1000`, {
       headers: { apikey: SECRET, Authorization: `Bearer ${SECRET}` },
     });
     if (!res.ok) throw new Error(`reading progress: HTTP ${res.status} ${(await res.text()).slice(0, 200)}`);
     const rows = await res.json();
-    rows.forEach((r) => done.add(r.name.toLowerCase()));
+    rows.forEach((r) => { if (r.embedded_at && r.embedded_at >= r.updated_at) done.add(r.name.toLowerCase()); });
     if (rows.length < 1000) return done;
   }
 }
@@ -110,7 +111,7 @@ if (OUT_DIR) {
   const done = await embeddedNames();
   // pages from the mirror still without an embedding (pages created or edited on the site are picked up by pages_to_embed later)
   const pages = localPages().filter((p) => !done.has(p.name.toLowerCase())).slice(0, LIMIT);
-  console.log(`${done.size} pages already have an embedding; embedding ${pages.length} more with gte-small…`);
+  console.log(`${done.size} pages have a current embedding; embedding ${pages.length} new or changed pages with gte-small…`);
   await run(pages, pages.length, (rows) => upload(rows));
 }
 console.log(`\nDone: ${done} pages.`);
