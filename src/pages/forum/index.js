@@ -5,7 +5,7 @@ import 'katex/dist/katex.min.css';
 import { FORUM, esc, clean, pageUrl } from '../../core/nlab.js';
 import * as F from '../../core/forum-data.js';
 import { createSourceEditor } from '../../ui/codemirror.js';
-import { openAccount } from '../../ui/account.js';
+import { openForumSignIn } from '../../ui/account.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const main = $('#f-main');
@@ -68,7 +68,7 @@ function renderAccount() {
   icons();
 }
 
-const openSignIn = () => openAccount('in');
+const openSignIn = () => openForumSignIn('in');
 addEventListener('account-change', () => { renderAccount(); route(); });
 
 /* ---------- channels ---------- */

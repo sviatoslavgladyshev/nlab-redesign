@@ -401,3 +401,4 @@ html[data-mode="dark"] .a-body .a-cat { color: color-mix(in srgb, var(--c) 45%, 
 .adhd-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
 @media (max-width: 560px) { .adhd-demo { grid-template-columns: 1fr; } .adhd-intro form { padding: 24px 20px 20px; } .adhd-actions .tbtn { flex: 1; justify-content: center; } }
 .adhd-demo .focus-read b.bx { font-weight: 700; color: var(--ink); }
+.w-sync { font: 14px var(--ui); color: var(--muted); margin: -6px 0 14px; }

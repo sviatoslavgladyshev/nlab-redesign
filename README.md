@@ -54,6 +54,19 @@ served by the app from `404.html`. Old `page.html?p=…` links redirect.
 Images are from Wikimedia Commons (public domain, CC0 or CC BY); full credits are in the site footer and
 `src/data/credits.json`.
 
+## Database (accounts, synced drafts, updates list)
+
+Accounts and data live in [Supabase](https://supabase.com). `.env` holds the project URL and the
+**publishable** key (public by design); what anyone can read or write is set by the row-level security rules
+in `supabase/schema.sql`. Never put the secret key in this repository.
+
+- Set up once: Supabase dashboard → SQL Editor → paste `supabase/schema.sql` → Run.
+- Sign-in links: Authentication → URL Configuration → Site URL `https://sviatoslavgladyshev.github.io/nlab-redesign/`,
+  and add `http://localhost:5173/**` to the redirect URLs for local development.
+- Drafts are kept in the browser and, when signed in, in the `drafts` table (merged on sign-in, newest wins).
+- "Stay in the loop" sign-ups go to the `subscribers` table (Table Editor → export as CSV).
+- Without `.env`, everything still works and stays in the browser.
+
 ## Code layout
 
 ```
@@ -64,7 +77,9 @@ src/
     markup.js          nLab source → HTML (Markdown, itex/KaTeX, includes, theorems, TikZ)
     search-engine.js   search index, query language and ranking
     forum-data.js      forum snapshot and live nForum (Zulip) API
-    drafts.js, hash.js
+    db.js              the site's database (Supabase): accounts, drafts, updates list
+    drafts.js          drafts in the browser, synced to your account
+    hash.js
   ui/            shared interface
     app.js             site shell: icons, nav, dark mode, mobile menu, sign-up (every page imports it)
     account.js, suggest.js (search suggestions), preview.js (page-preview cards), codemirror.js
@@ -84,5 +99,6 @@ scripts/         build-time generators (run by npm scripts)
   seo.mjs              static article/CQTS pages, sitemap, 404 page (after vite build)
   article-meta.mjs     per-article title/summary/image (shared by seo.mjs, og-articles.mjs and the dev server)
   og-articles.mjs      link-preview images for the most-linked articles (needs Chrome; `npm run og`)
+supabase/        schema.sql: tables and access rules for the database
 public/          static files: images, brand, og/ previews, snapshot/ (generated, not committed)
 ```

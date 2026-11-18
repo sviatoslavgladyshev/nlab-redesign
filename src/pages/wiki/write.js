@@ -3,24 +3,14 @@ import { icons } from '../../ui/app.js';
 import { esc, pageUrl, resolvePage } from '../../core/nlab.js';
 import { $, setHero, link } from './shell.js';
 import { TEMPLATES } from './templates.js';
+import { drafts as draftStore, draftsSynced } from '../../core/drafts.js';
 
-function listDrafts() {
-  const out = [];
-  try {
-    for (const k of Object.keys(localStorage)) {
-      if (!k.startsWith('nlab-draft:')) continue;
-      const d = JSON.parse(localStorage.getItem(k));
-      out.push({ name: k.slice(11), ...d });
-    }
-  } catch { /* ignore */ }
-  return out.sort((a, b) => b.savedAt - a.savedAt);
-}
 export function renderWrite() {
   scrollTo({ top: 0, left: 0, behavior: 'auto' });
   setHero({ title: 'Write a page', crumb: 'Write', meta: 'Start a new article. New pages can be edited directly; existing nLab pages accept suggestions from readers.', actions: link('Sandboxes', 'flask-conical', 'library/?kind=s') });
   const body = $('#a-body');
   body.classList.add('loaded', 'is-search');
-  const drafts = listDrafts();
+  const drafts = draftStore.list();
   body.innerHTML = `
     <form class="w-form" id="w-form">
       <label class="w-title">Title<input id="w-name" type="text" placeholder="e.g. Hopf invariant" autocomplete="off" required></label>
@@ -32,8 +22,9 @@ export function renderWrite() {
     </form>
     <section class="w-drafts" id="drafts">
       <h2>Your drafts</h2>
+      <p class="w-sync">${draftsSynced() ? 'Saved to your account: they follow you to every device.' : 'Saved in this browser. <button type="button" class="linkish" data-acct="in">Sign in</button> to keep them on every device.'}</p>
       ${drafts.length ? `<ul>${drafts.map((d) => `<li><a href="${esc(pageUrl(d.name, 'edit'))}"><b>${esc(d.name)}</b><span>${d.isNew ? 'New article' : 'Edit of an existing page'} · saved ${new Date(d.savedAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span></a></li>`).join('')}</ul>`
-        : '<p class="w-none">No drafts yet. Anything you start writing appears here, saved in this browser.</p>'}
+        : `<p class="w-none">No drafts yet. Anything you start writing appears here, ${draftsSynced() ? 'saved to your account' : 'saved in this browser'}.</p>`}
     </section>`;
   icons();
   const input = $('#w-name');
@@ -57,3 +48,5 @@ export function renderWrite() {
     location.href = hit ? `${pageUrl(hit.name, 'suggest')}` : `${pageUrl(q, 'new&tpl=')}${new FormData(e.target).get('tpl')}`;
   });
 }
+// when drafts arrive from your account (sign-in on another device), show them
+addEventListener('drafts-synced', () => { if (document.querySelector('#w-form') && !document.querySelector('#w-name').value) renderWrite(); });

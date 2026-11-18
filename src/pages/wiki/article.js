@@ -1,7 +1,7 @@
 // Reading an article: published version or your draft, the header actions, and opening the editor.
 import { icons } from '../../ui/app.js';
 import { esc, pageUrl, fetchSource, loadIndex, PageNotFound, displayTitle } from '../../core/nlab.js';
-import { drafts } from '../../core/drafts.js';
+import { drafts, draftsSynced } from '../../core/drafts.js';
 import { $, params, setHero, btn, link, toast } from './shell.js';
 import { renderInto, renderContext, buildToc } from './render.js';
 import { focusOn, toggleReading } from './reading.js';
@@ -86,7 +86,7 @@ function openEditor(suggestion = !canDirectEdit()) {
       showArticle(drafts.get(state.name) ? 'draft' : 'published');
       if (how === 'published') toast('Thanks! It may take a little while for the nLab mirror to show your change here.');
       else if (how === 'suggested') toast('Suggestion prepared. Share it in the forum so an author can review it.');
-      else if (drafts.get(state.name)) toast('Draft saved in this browser.');
+      else if (drafts.get(state.name)) toast(draftsSynced() ? 'Draft saved to your account.' : 'Draft saved in this browser.');
     },
   });
 }

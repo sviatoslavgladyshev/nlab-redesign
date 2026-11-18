@@ -2,6 +2,7 @@
 import '../styles/base.css';
 import '../styles/theme.css';
 import { attachSuggest } from './suggest.js';
+import { dbEnabled, subscribe } from '../core/db.js';
 import './account.js';
 import {
   createIcons, Search, ArrowRight, ArrowUpRight, Sigma, Atom, Lightbulb, BookOpen, BookMarked, PenLine, Quote,
@@ -208,13 +209,14 @@ const diagram = document.querySelector('canvas.kgraph');
 if (diagram) conceptDiagram(diagram);
 
 /* ---------- Sign up for updates ----------
-   Posts to the mailing-list endpoint in VITE_UPDATES_ENDPOINT (e.g. a Buttondown / Mailchimp / Formspree
-   form URL). Without one configured, the sign-up is kept in this browser so the flow can be tried. */
+   Saved to the site's database (the subscribers table; export it from the Supabase dashboard), or posted
+   to VITE_UPDATES_ENDPOINT (a Buttondown / Mailchimp / Formspree form URL) if that is set instead.
+   With neither, the sign-up is kept in this browser so the flow can be tried. */
 const UPDATES_ENDPOINT = import.meta.env.VITE_UPDATES_ENDPOINT || '';
 $$('form.signup').forEach((f) => {
   const email = f.querySelector('input[type="email"]');
   const note = f.querySelector('.signup-note');
-  if (!UPDATES_ENDPOINT) note.textContent = 'Prototype: sign-ups are kept in this browser until a mailing list is connected.';
+  if (!UPDATES_ENDPOINT && !dbEnabled) note.textContent = 'Prototype: sign-ups are kept in this browser until a mailing list is connected.';
   f.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!email.checkValidity() || !email.value.trim()) {
@@ -227,7 +229,8 @@ $$('form.signup').forEach((f) => {
     const btn = f.querySelector('button');
     btn.disabled = true;
     try {
-      if (UPDATES_ENDPOINT) {
+      if (dbEnabled) await subscribe(email.value.trim(), topics);
+      else if (UPDATES_ENDPOINT) {
         const res = await fetch(UPDATES_ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ email: email.value.trim(), topics }) });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
       } else {
