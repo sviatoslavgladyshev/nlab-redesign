@@ -181,6 +181,7 @@ a:hover .h-more svg { transform: translateX(4px); }
 .try-dots i:nth-child(2) { background: #febc2e; } .try-dots i:nth-child(3) { background: #28c840; }
 .h-try .try-hint { margin-left: auto; font: 12px var(--ui); color: #5f6670; }
 .h-try .try-out { background: #fff; color: #1b1d21; }
+html[data-mode="dark"] .h-try .try-out { color: #1b1d21; --ink: #1b1d21; --ink-2: #363c45; --link: #1d4f91; }
 @media (max-width: 900px) { .h-write { grid-template-columns: 1fr; gap: 36px; } .h-try { transform: none; } }
 
 /* CQTS band */

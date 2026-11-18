@@ -43,11 +43,11 @@
 </header>
 
 <!-- Article header -->
-<section class="a-hero">
+<section class="a-hero" hidden>
   <div class="wrap a-hero-inner">
     <nav class="crumbs" aria-label="Breadcrumb"><a href="./">nLab</a><span>/</span><span id="crumb-current">…</span></nav>
-    <h1 class="title" id="a-title"><span class="skel" style="width:60%"></span></h1>
-    <p class="a-meta" id="a-meta">&nbsp;</p>
+    <h1 class="title" id="a-title"></h1>
+    <p class="a-meta" id="a-meta" hidden></p>
     <div class="a-actions" id="a-actions"></div>
   </div>
 </section>
@@ -93,6 +93,7 @@
     </div>
     <div class="tg vis-only">
       <button type="button" class="menu-btn" data-menu="block" aria-haspopup="menu" title="Paragraph style"><span id="ws-block-label">Paragraph</span><i data-lucide="chevron-down"></i></button>
+      <button type="button" class="menu-btn" data-menu="align" aria-haspopup="menu" aria-label="Text alignment"><i data-lucide="align-left"></i><i data-lucide="chevron-down"></i></button>
     </div>
     <div class="tg tex-only">
       <button type="button" data-cmd="heading" title="Section heading (##)"><i data-lucide="heading-2"></i></button>
@@ -115,8 +116,19 @@
     </div>
     <div class="tg">
       <button type="button" class="menu-btn" data-menu="env" aria-haspopup="menu" title="Insert a theorem-like environment"><i data-lucide="plus"></i><span>Environment</span><i data-lucide="chevron-down"></i></button>
+      <button type="button" class="menu-btn" data-menu="break" aria-haspopup="menu" aria-label="Insert break"><span>Break</span><i data-lucide="chevron-down"></i></button>
     </div>
     <span class="tg-spacer"></span>
+    <select id="ws-zoom" aria-label="Paper zoom">
+      <option value="width">Fit width</option>
+      <option value="page">Fit page</option>
+      <option value=".5">50%</option>
+      <option value=".75">75%</option>
+      <option value="1">100%</option>
+      <option value="1.25">125%</option>
+      <option value="1.5">150%</option>
+      <option value="2">200%</option>
+    </select>
     <button type="button" class="ws-help-btn" data-ws="help" title="How editing works"><i data-lucide="circle-help"></i></button>
   </div>
 
@@ -193,9 +205,7 @@
       <div class="a-ctx" id="a-ctx" data-panel="ctx" hidden></div>
     </div>
   </aside>
-  <article class="a-body" id="a-body">
-    <div class="skel-block"><span class="skel"></span><span class="skel"></span><span class="skel" style="width:80%"></span><span class="skel"></span><span class="skel" style="width:55%"></span></div>
-  </article>
+  <article class="a-body" id="a-body"></article>
 </div>
 
 <footer>

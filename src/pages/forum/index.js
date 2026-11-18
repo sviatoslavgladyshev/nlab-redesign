@@ -1,5 +1,6 @@
 // Forum: a custom front end for the nForum (Zulip), in the site's own design.
 import { icons } from '../../ui/app.js';
+import { withPageLoading } from '../../ui/page-loading.js';
 import './forum.css';
 import 'katex/dist/katex.min.css';
 import { FORUM, esc, clean, pageUrl } from '../../core/nlab.js';
@@ -121,7 +122,6 @@ async function listView(chId, q) {
     main.innerHTML = head(title, note) + `<ul class="topics">${all.slice(0, 60).map((t) => topicRow(t, t.channelId, t.channel)).join('')}</ul>`;
   } else {
     const c = CHANNELS.find((x) => x.id === chId);
-    main.innerHTML = head(c?.name || 'Channel', CH_NOTE[c?.name] || c?.description || '') + '<div class="f-loading">Loading topics…</div>';
     const list = await F.topics(chId);
     main.innerHTML = head(c?.name || 'Channel', CH_NOTE[c?.name] || c?.description || '', chId)
       + `<ul class="topics">${list.slice(0, 150).map((t) => topicRow(t, chId)).join('')}</ul>`;
@@ -173,7 +173,6 @@ function mountComposer(chId, topic, isNew) {
 
 async function threadView(chId, topic) {
   const c = CHANNELS.find((x) => x.id === chId);
-  main.innerHTML = `<div class="f-loading">Loading…</div>`;
   const msgs = await F.thread(chId, topic);
   let prev = null;
   const body = msgs.map((m) => {
@@ -222,12 +221,14 @@ async function route() {
   const t = p.get('t');
   const q = p.get('q');
   $('#f-q').value = q || '';
-  await renderChannels(c);
   document.title = t ? `${t} — nLab Forum` : 'Forum — nLab';
   try {
-    if (p.has('new')) newTopicView(c, p.get('new'));
-    else if (t && c != null) await threadView(c, t);
-    else await listView(c, q);
+    await withPageLoading(t ? 'Loading discussion…' : 'Loading the forum…', async () => {
+      await renderChannels(c);
+      if (p.has('new')) newTopicView(c, p.get('new'));
+      else if (t && c != null) await threadView(c, t);
+      else await listView(c, q);
+    });
   } catch (err) {
     main.innerHTML = `<div class="f-empty"><p>Could not load the forum (${esc(err.message)}).</p></div>`;
   }

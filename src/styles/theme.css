@@ -3,6 +3,28 @@
 @import '@fontsource-variable/figtree/index.css';
 @import '@fontsource-variable/lexend/index.css';
 
+.page-loading {
+  position: fixed; z-index: 170; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex; align-items: center; gap: 10px; width: max-content; max-width: calc(100% - 32px);
+  padding: 10px 16px; border: 1px solid var(--outline); border-radius: 999px;
+  background: var(--surface); color: var(--ink); box-shadow: 0 4px 18px rgb(0 0 0 / .18);
+  font: 600 13px/1.45 var(--ui); pointer-events: none;
+}
+.page-loading[hidden] { display: none; }
+.page-loading-ring {
+  width: 16px; height: 16px; flex: none; box-sizing: border-box;
+  border: 2px solid var(--outline); border-top-color: var(--primary); border-radius: 50%;
+  animation: page-loading-spin .7s linear infinite;
+}
+@keyframes page-loading-spin { to { transform: rotate(1turn); } }
+@media (prefers-reduced-motion: reduce) { .page-loading-ring { animation: none; } }
+
+body:is(.article-page, .library-page, .forum-page) {
+  min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column;
+}
+body:is(.article-page, .library-page, .forum-page) > footer { margin-block-start: auto; }
+
 /* ===================== PRISM ===================== */
 [data-theme="prism"] {
   --paper: #ffffff; --paper-2: #f4f5f7; --sheet: #f4f5f7;

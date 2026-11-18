@@ -10,12 +10,19 @@ import { createSourceEditor } from '../../ui/codemirror.js';
 import { icons } from '../../ui/app.js';
 
 /* ---------- Splitting source into blocks ---------- */
+const pageBreak = /^\\(?:newpage|clearpage)$/;
 export function splitBlocks(src) {
   const lines = src.replace(/\r\n?/g, '\n').split('\n');
   const blocks = [];
   let cur = [], depth = 0, inMath = false, gap = '';
   const flush = () => { if (cur.length) { blocks.push({ src: cur.join('\n'), sep: '' }); cur = []; } };
   for (const line of lines) {
+    if (depth === 0 && !inMath && pageBreak.test(line.trim())) {
+      flush();
+      blocks.push({ src: line, sep: '\n' });
+      gap = '';
+      continue;
+    }
     if (!line.trim() && depth === 0 && !inMath) {
       if (cur.length) { flush(); gap = '\n'; } else gap += '\n';
       if (blocks.length) blocks[blocks.length - 1].sep = `\n${gap}`;
@@ -69,7 +76,7 @@ function inline(node) {
     const tag = n.tagName;
     if (n.classList.contains('m')) { out += `$${n.dataset.tex || ''}$`; continue; }
     if (n.classList.contains('katex')) continue;
-    if (tag === 'BR') { out += '\n'; continue; }
+    if (tag === 'BR') { if (n.nextSibling) out += '<br>'; continue; }
     const inner = inline(n);
     if (tag === 'B' || tag === 'STRONG') out += inner.trim() ? `**${inner}**` : inner;
     else if (tag === 'I' || tag === 'EM') out += inner.trim() ? `_${inner}_` : inner;
@@ -98,7 +105,7 @@ function listToSource(list, indent = '') {
     return `${indent}${bullet}${text.trim()}${sub.map((s) => `\n${listToSource(s, `${indent}    `)}`).join('')}`;
   }).join('\n');
 }
-function elementToSource(el) {
+function blockToSource(el) {
   const tag = el.tagName;
   if (/^H[1-6]$/.test(tag)) {
     const text = inline(el).trim();
@@ -110,12 +117,20 @@ function elementToSource(el) {
   return inline(el).trim();
 }
 
-// Fingerprint of rendered elements; ignores inline styles the browser may add while editing
-const fp = (els) => els.map((e) => e.outerHTML).join('').replace(/ style="[^"]*"/g, '');
+const alignments = ['left', 'center', 'right', 'justify'];
+const blockAlignment = (el) => el.style.textAlign || el.getAttribute('align');
+const alignmentBlock = /^\+-- \{: \.align-(left|center|right|justify)\}\n([\s\S]*?)\n=--$/;
+function elementToSource(el) {
+  const source = blockToSource(el);
+  const alignment = blockAlignment(el);
+  return source && alignments.includes(alignment) ? `+-- {: .align-${alignment}}\n${source}\n=--` : source;
+}
+
+const fp = (els) => els.map((el) => el.outerHTML).join('');
 
 /* ---------- The visual document ---------- */
 export class VisualDoc {
-  constructor(root, { onChange, onActive } = {}) {
+  constructor(root, { onChange, onActive, signal } = {}) {
     this.root = root;
     this.onChange = onChange;
     this.onActive = onActive;
@@ -126,15 +141,15 @@ export class VisualDoc {
     root.dataset.placeholder = 'Start writing…';
     root.spellcheck = true;
     document.execCommand?.('defaultParagraphSeparator', false, 'p');
-    root.addEventListener('input', (e) => this.handleInput(e));
+    root.addEventListener('input', (e) => this.handleInput(e), { signal });
     root.addEventListener('paste', (e) => {
       if (e.target.closest?.('.v-island')) return;
       e.preventDefault();
       document.execCommand('insertText', false, e.clipboardData.getData('text/plain'));
-    });
-    root.addEventListener('click', (e) => this.handleClick(e));
-    root.addEventListener('keydown', (e) => this.handleKey(e));
-    document.addEventListener('selectionchange', () => { if (this.root.contains(document.activeElement)) this.onActive?.(this.currentBlockType()); });
+    }, { signal });
+    root.addEventListener('click', (e) => this.handleClick(e), { signal });
+    root.addEventListener('keydown', (e) => this.handleKey(e), { signal });
+    document.addEventListener('selectionchange', () => { if (this.root.contains(document.activeElement)) this.onActive?.(this.currentBlockType()); }, { signal });
   }
 
   load(source) {
@@ -166,6 +181,11 @@ export class VisualDoc {
   // DOM nodes for one block. Rendered HTML is parsed inside its own container,
   // so unbalanced markup can never leak into the surrounding document.
   blockNodes(b, i) {
+    if (pageBreak.test(b.src.trim())) {
+      const marker = this.pageBreakNode(b.src);
+      marker.dataset.b = String(i);
+      return [marker];
+    }
     const island = (cls, inner, button) => {
       const el = document.createElement('div');
       el.className = `v-island ${cls}`.trim();
@@ -179,8 +199,10 @@ export class VisualDoc {
       el.append(btn);
       return [el];
     };
-    const meta = metaLabel(b.src);
-    const html = meta ? '' : renderSource(b.src);
+    const aligned = b.src.match(alignmentBlock);
+    const source = aligned?.[2] ?? b.src;
+    const meta = metaLabel(source);
+    const html = meta ? '' : renderSource(source);
     const visible = html.replace(/<[^>]*>/g, '').trim() || /<(img|svg|span class="m"|div class="eq")/.test(html);
     if (meta || !visible) {
       const [icon, label, note] = meta || ['code', 'Hidden source', b.src.trim().split('\n')[0].slice(0, 80)];
@@ -191,12 +213,15 @@ export class VisualDoc {
     }
     const box = document.createElement('div');
     box.innerHTML = html;
-    if (!isText(b.src)) {
+    if (!isText(source.replaceAll('<br>', ''))) {
       box.className = 'v-render';
       return island('', box, 'Edit LaTeX');
     }
     const nodes = [...box.childNodes].filter((n) => n.nodeType === 1);
-    nodes.forEach((c) => { c.dataset.b = String(i); });
+    nodes.forEach((c) => {
+      c.dataset.b = String(i);
+      if (aligned) c.style.textAlign = aligned[1];
+    });
     return nodes;
   }
 
@@ -218,6 +243,7 @@ export class VisualDoc {
     const kids = [...this.root.children];
     for (const el of kids) {
       if (el.classList.contains('v-tail') && !el.textContent.replace(/\u200b/g, '').trim()) continue;
+      if (el.classList.contains('ws-page-break')) { out.push({ src: el.dataset.src, sep: '\n\n' }); continue; }
       if (el.dataset.newIsland != null) { out.push({ src: el.dataset.src, sep: '\n\n' }); continue; }
       const b = el.dataset.b != null ? +el.dataset.b : null;
       if (b != null && this.blocks[b]) {
@@ -252,7 +278,14 @@ export class VisualDoc {
   changed() {
     this.updatePlaceholder();
     clearTimeout(this.timer);
-    this.timer = setTimeout(() => this.onChange?.(this.getSource()), 250);
+    this.timer = setTimeout(() => this.flushChange(), 250);
+  }
+
+  flushChange() {
+    if (!this.timer) return;
+    clearTimeout(this.timer);
+    this.timer = 0;
+    this.onChange?.(this.getSource());
   }
 
   /* ----- typing helpers: markdown shortcuts, $math$ and [[links]] ----- */
@@ -317,6 +350,15 @@ export class VisualDoc {
     const n = this.topOf(getSelection().anchorNode);
     if (!n || n.nodeType !== 1) return 'p';
     return n.classList.contains('v-island') ? 'island' : n.tagName.toLowerCase();
+  }
+
+  pageBreakNode(source = '\\newpage') {
+    const marker = document.createElement('div');
+    marker.className = 'ws-page-break';
+    marker.contentEditable = 'false';
+    marker.dataset.src = source;
+    marker.textContent = 'Page break';
+    return marker;
   }
 
   handleKey(e) {
@@ -447,6 +489,17 @@ export class VisualDoc {
       case 'list': document.execCommand('insertUnorderedList'); break;
       case 'olist': document.execCommand('insertOrderedList'); break;
       case 'quote': document.execCommand('formatBlock', false, 'blockquote'); break;
+      case 'align': {
+        const command = { left: 'justifyLeft', center: 'justifyCenter', right: 'justifyRight', justify: 'justifyFull' }[arg];
+        if (command) document.execCommand(command);
+        break;
+      }
+      case 'line-break': document.execCommand('insertLineBreak'); break;
+      case 'page-break': {
+        const marker = this.pageBreakNode();
+        document.execCommand('insertHTML', false, `</p>${marker.outerHTML}<p><br></p>`);
+        break;
+      }
       case 'undo': document.execCommand('undo'); break;
       case 'redo': document.execCommand('redo'); break;
       case 'link': {

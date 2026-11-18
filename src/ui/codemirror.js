@@ -186,6 +186,8 @@ export const FORMAT = {
   list: (v) => prefixLines(v, (l) => (/^\* /.test(l) ? l.slice(2) : `* ${l}`)),
   olist: (v) => prefixLines(v, (l, i) => (/^\d+\. /.test(l) ? l.replace(/^\d+\. /, '') : `${i + 1}. ${l}`)),
   quote: (v) => prefixLines(v, (l) => (/^> /.test(l) ? l.slice(2) : `> ${l}`)),
+  'line-break': (v) => { v.dispatch(v.state.replaceSelection('<br>')); v.focus(); return true; },
+  'page-break': (v) => insertBlock(v, '\\newpage'),
   env: (v, cls, label) => { const s = envSource(cls, label, '…'); const i = s.indexOf('…'); return insertBlock(v, s, i, i + 1); },
 };
 

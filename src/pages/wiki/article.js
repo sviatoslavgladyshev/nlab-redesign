@@ -1,5 +1,6 @@
 // Reading an article: published version or your draft, the header actions, and opening the editor.
 import { icons } from '../../ui/app.js';
+import { withPageLoading } from '../../ui/page-loading.js';
 import { esc, pageUrl, fetchSource, loadIndex, PageNotFound, displayTitle } from '../../core/nlab.js';
 import { drafts, draftsSynced } from '../../core/drafts.js';
 import { dbEnabled, ownsPage, backlinks, similarPages, relatedPages } from '../../core/db.js';
@@ -14,7 +15,7 @@ const openWorkspace = async (opts) => (await import('../editor/editor.js')).open
 const state = { name: '', published: '', exists: true, showingDraft: false, meta: null, owner: false };
 const isSandbox = (name) => /^sandbox(?:\d+)?$/i.test(String(name || '').trim());
 // new pages, sandboxes and pages started on this site are edited directly; other nLab pages take suggestions
-const canDirectEdit = () => !state.exists || isSandbox(state.name) || state.owner;
+const canDirectEdit = (page = state) => !page.exists || isSandbox(page.name) || page.owner;
 const when = (t) => new Date(t).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
 async function showArticle(which) {
@@ -73,21 +74,26 @@ async function showArticleHeader() {
   icons();
 }
 
+export async function loadArticle(requested, { fresh = false } = {}) {
+  let name = requested, source = '', meta = null, exists = true;
+  try {
+    ({ name, source, meta = null } = await fetchSource(requested, { fresh }));
+  } catch (e) {
+    if (!(e instanceof PageNotFound)) throw e;
+    exists = false;
+  }
+  const owner = meta?.origin === 'site' && dbEnabled ? await ownsPage(name).catch(() => false) : false;
+  return { name, published: source, meta, owner, exists };
+}
+
 export async function renderArticle(requested) {
   const wantsEditor = params.has('edit') || params.has('new') || params.has('suggest');
   scrollTo({ top: 0, left: 0, behavior: 'auto' });
   $('#crumb-current').textContent = requested;
-  let name = requested, source = '', meta = null;
-  try {
-    ({ name, source, meta = null } = await fetchSource(requested, { fresh: wantsEditor }));
-    state.exists = true;
-  } catch (e) {
-    if (!(e instanceof PageNotFound)) throw e;
-    state.exists = false;
-  }
+  const article = await loadArticle(requested, { fresh: wantsEditor });
+  const { name, published: source } = article;
   if (name !== requested) history.replaceState(null, '', `${new URL(pageUrl(name), document.baseURI).pathname}${location.search}${location.hash}`);
-  const owner = meta?.origin === 'site' && dbEnabled ? await ownsPage(name).catch(() => false) : false;
-  Object.assign(state, { name, published: source, meta, owner });
+  Object.assign(state, article);
   $('#a-body').classList.add('loaded');
   if (params.has('new') && state.exists) {
     const url = new URL(location.href);
@@ -124,18 +130,22 @@ addEventListener('reading-preference-change', (event) => {
   applyFocusRead($('#a-body'), event.detail);
 });
 
-function openEditor(suggestion = !canDirectEdit()) {
-  const d = drafts.get(state.name);
-  const starter = !state.exists ? starterSource(params.get('starter')) : '';
+export function articleEditorOptions(page, { starterId, suggestion = !canDirectEdit(page) } = {}) {
+  const d = drafts.get(page.name);
+  const starter = !page.exists ? starterSource(starterId) : '';
   const start = d
-    ? !state.exists && isUntouchedStarter(state.name, d.source) ? '' : d.source
-    : state.exists ? state.published : starter;
+    ? !page.exists && isUntouchedStarter(page.name, d.source) ? '' : d.source
+    : page.exists ? page.published : starter;
+  return { name: page.name, original: page.published, start, starter, isNew: !page.exists, suggestion };
+}
+
+function openEditor(suggestion = !canDirectEdit()) {
   const u = new URL(location.href);
   for (const key of ['new', 'edit', 'suggest', 'tpl']) u.searchParams.delete(key);
   u.searchParams.set(!state.exists ? 'new' : suggestion ? 'suggest' : 'edit', '');
   history.replaceState(null, '', u);
   return openWorkspace({
-    name: state.name, original: state.exists ? state.published : '', start, starter, isNew: !state.exists, suggestion,
+    ...articleEditorOptions(state, { starterId: params.get('starter'), suggestion }),
     onExit: (how) => {
       if (!how) {
         location.replace(new URL('write#drafts', document.baseURI));
@@ -162,20 +172,29 @@ function openEditor(suggestion = !canDirectEdit()) {
   });
 }
 
+let openingEditor = false;
+async function openEditorFromArticle(suggestion) {
+  if (openingEditor) return;
+  openingEditor = true;
+  try { await withPageLoading('Opening the editor…', () => openEditor(suggestion)); }
+  catch (error) { toast(error.message || 'Could not open the editor.'); }
+  finally { openingEditor = false; }
+}
+
 // Header buttons and the E shortcut
 document.addEventListener('click', async (e) => {
   const b = e.target.closest('[data-act]');
   if (!b) return;
   const act = b.dataset.act;
-  if (act === 'edit' || act === 'resume-draft') openEditor();
-  else if (act === 'suggest') openEditor(true);
+  if (act === 'edit' || act === 'resume-draft') openEditorFromArticle();
+  else if (act === 'suggest') openEditorFromArticle(true);
   else if (act === 'toggle-published') showArticle(state.showingDraft ? 'published' : 'draft');
   else if (act === 'focus-read') toggleReading(b);
   else if (act === 'share') { try { await navigator.clipboard.writeText(location.href.replace(/[?&]edit\b/, '')); toast('Link copied.'); } catch { toast(location.href); } }
 });
 addEventListener('keydown', (e) => {
   if (state.name && !document.body.classList.contains('ws-open') && e.key === 'e' && !e.metaKey && !e.ctrlKey && !e.altKey
-    && !/input|textarea|select/i.test(document.activeElement?.tagName) && !document.activeElement?.isContentEditable) { e.preventDefault(); openEditor(!canDirectEdit()); }
+    && !/input|textarea|select/i.test(document.activeElement?.tagName) && !document.activeElement?.isContentEditable) { e.preventDefault(); openEditorFromArticle(!canDirectEdit()); }
 });
 
 // "Pages that link here", from the database's link graph

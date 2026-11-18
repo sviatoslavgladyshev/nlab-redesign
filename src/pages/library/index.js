@@ -2,6 +2,7 @@
 // field and subject, sortable by how often pages are linked to, with lazy previews.
 // Data: snapshot/library.json, built from the nLab content mirror by scripts/mirror-index.mjs.
 import { icons } from '../../ui/app.js';
+import { withPageLoading } from '../../ui/page-loading.js';
 import './library.css';
 import 'katex/dist/katex.min.css';
 import { esc, pageUrl, displayTitle } from '../../core/nlab.js';
@@ -56,6 +57,7 @@ function matches(p, { kind = state.kind, field = state.field, sub = state.sub, q
 }
 
 function render() {
+  if (!LIB) return;
   const q = state.q.toLowerCase();
   const base = { q };
   // kind tabs with counts (respecting field + search)
@@ -122,12 +124,12 @@ function card(p) {
   if (p.kind === 'p') {
     return `<a class="lib-card person" href="${esc(pageUrl(p.name))}" data-name="${esc(p.name)}">
       <span class="av" style="--h:${hue(p.name)}">${esc(initials(displayTitle(p.name, true)))}</span>
-      <span class="lc-body"><b>${esc(displayTitle(p.name, true))}</b><span class="lc-meta">${linked}</span>${p.fields.filter((x) => x >= 0).length ? `<span class="lc-fields">${p.fields.filter((x) => x >= 0).slice(0, 3).map((x) => `<span class="lc-tag">${esc(LIB.fields[x])}</span>`).join('')}</span>` : ''}<span class="lc-ex"><span class="ll-skel"></span><span class="ll-skel short"></span></span></span></a>`;
+      <span class="lc-body"><b>${esc(displayTitle(p.name, true))}</b><span class="lc-meta">${linked}</span>${p.fields.filter((x) => x >= 0).length ? `<span class="lc-fields">${p.fields.filter((x) => x >= 0).slice(0, 3).map((x) => `<span class="lc-tag">${esc(LIB.fields[x])}</span>`).join('')}</span>` : ''}<span class="lc-ex"></span></span></a>`;
   }
   return `<a class="lib-card" href="${esc(pageUrl(p.name))}" data-name="${esc(p.name)}">
     ${tag ? `<span class="lc-tag k-${p.kind}">${esc(tag)}</span>` : ''}
     <b>${esc(displayTitle(p.name))}</b>
-    <span class="lc-ex"><span class="ll-skel"></span><span class="ll-skel"></span><span class="ll-skel short"></span></span>
+    <span class="lc-ex"></span>
     <span class="lc-meta"><i data-lucide="network"></i>${linked}</span></a>`;
 }
 
@@ -167,7 +169,10 @@ new IntersectionObserver(([e]) => { if (e.isIntersecting && !$('#lib-more').hidd
 /* ---------- load ---------- */
 readUrl();
 $('#lib-q').value = state.q;
-fetch('snapshot/library.json').then((r) => r.json()).then((data) => {
+withPageLoading('Loading the library…', async () => {
+  const response = await fetch('snapshot/library.json');
+  if (!response.ok) throw new Error('Library index request failed');
+  const data = await response.json();
   LIB = {
     fields: data.fields,
     subs: data.subs,

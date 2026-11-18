@@ -10,7 +10,6 @@ export async function showProfile(settings) {
   const title = settings ? 'Profile settings' : 'My profile';
   body.classList.add('loaded', 'is-search');
   setHero({ title });
-  body.innerHTML = '<p role="status">Loading your account…</p>';
   await initAuth();
   let generation = 0;
 
@@ -25,7 +24,6 @@ export async function showProfile(settings) {
     }
     const cached = cachedProfile(user);
     if (!settings) showOverview(body, user, cached);
-    else body.innerHTML = '<p role="status">Loading profile settings…</p>';
     try {
       const profile = await loadProfile(user);
       if (request !== generation || currentUser()?.id !== user.id) return;

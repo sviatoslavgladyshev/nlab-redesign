@@ -2,6 +2,7 @@
 // (wiki/<Name>/, search?q=…, recent, all, write). It is also the site's 404 page, so it handles every
 // unknown path and old .html links.
 import { icons } from '../../ui/app.js';
+import { withPageLoading } from '../../ui/page-loading.js';
 import './article.css';
 import { esc, pageUrl } from '../../core/nlab.js';
 import { isExcludedPage } from '../../core/page-visibility.js';
@@ -32,13 +33,22 @@ if (legacy) {
 } else {
   const article = path.match(/^wiki\/(.+?)\/?$/);
   const view = path.replace(/\/$/, '');
-  if (article && !isExcludedPage(article[1])) renderArticle(article[1]).catch((e) => showError(article[1], e));
+  if (article && !isExcludedPage(article[1])) {
+    const editing = ['new', 'edit', 'suggest'].some((key) => params.has(key));
+    withPageLoading(editing ? 'Opening the editor…' : 'Loading page…', () => renderArticle(article[1]))
+      .catch((e) => showError(article[1], e));
+  }
   else if (view === 'search') renderSearch(params.get('q') || '').catch((e) => showError('Search', e));
-  else if (view === 'recent') renderRecent().catch((e) => showError('Recent changes', e));
-  else if (view === 'all') renderAll().catch((e) => showError('All pages', e));
+  else if (view === 'recent') withPageLoading('Loading recent changes…', renderRecent).catch((e) => showError('Recent changes', e));
+  else if (view === 'all') withPageLoading('Loading pages…', renderAll).catch((e) => showError('All pages', e));
   else if (view === 'write') renderWrite();
   else if (view === 'suggestions') import('./suggestions.js').then(({ showSuggestions }) => showSuggestions()).catch((e) => showError('Suggestions', e));
-  else if (view === 'profile' || view === 'profile/settings') import('./profile.js').then(({ showProfile }) => showProfile(view.endsWith('/settings'))).catch((e) => showError('Profile', e));
+  else if (view === 'profile' || view === 'profile/settings') {
+    withPageLoading('Loading your profile…', async () => {
+      const { showProfile } = await import('./profile.js');
+      await showProfile(view.endsWith('/settings'));
+    }).catch((e) => showError('Profile', e));
+  }
   else if (view === 'wiki' || view === '') location.replace(document.baseURI);
   else {
     setHero({ title: 'Page not found', meta: 'There is nothing at this address.' });

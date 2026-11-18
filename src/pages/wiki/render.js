@@ -45,7 +45,7 @@ function linkLists(root) {
         title.append(...a.childNodes);
         if (title.childNodes.length === 1 && title.firstChild.nodeType === 3) title.textContent = displayTitle(title.textContent);
         a.append(title);
-        if (a.dataset.wiki) { a.insertAdjacentHTML('beforeend', '<span class="ll-ex"><span class="ll-skel"></span><span class="ll-skel short"></span></span>'); previewIO.observe(a); }
+        if (a.dataset.wiki) { a.insertAdjacentHTML('beforeend', '<span class="ll-ex"></span>'); previewIO.observe(a); }
         a.insertAdjacentHTML('beforeend', '<span class="ll-go" aria-hidden="true">→</span>');
         li.replaceChildren(a);
       } else {

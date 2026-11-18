@@ -21,6 +21,9 @@ import { openAccount } from '../../ui/account.js';
 import { busy } from '../../ui/app.js';
 export { drafts };
 const MODE_KEY = 'nlab-editor-mode';
+const ZOOM_KEY = 'nlab-editor-zoom';
+const A4_WIDTH = 210 * 96 / 25.4;
+const A4_HEIGHT = 297 * 96 / 25.4;
 
 const SYMBOLS = [
   ['\\to', '→'], ['\\hookrightarrow', '↪'], ['\\twoheadrightarrow', '↠'], ['\\Rightarrow', '⇒'], ['\\mapsto', '↦'], ['\\dashv', '⊣'],
@@ -36,6 +39,11 @@ const ENV_MENU = [['defn|Definition', 'Definition', 'Introduce a notion', 'book-
   ['theorem|Theorem', 'Theorem', 'A main result', 'radical'], ['lemma|Lemma', 'Lemma', 'A helper result', 'git-compare'],
   ['cor|Corollary', 'Corollary', 'Follows from a result', 'arrow-right'], ['example|Example', 'Example', 'A worked instance', 'lightbulb'],
   ['remark|Remark', 'Remark', 'A side comment', 'info'], ['proof|Proof', 'Proof', 'Ends with ∎', 'check']];
+const ALIGN_MENU = [['left', 'Align left', '', 'align-left'], ['center', 'Center', '', 'align-center'],
+  ['right', 'Align right', '', 'align-right'], ['justify', 'Justify', '', 'align-justify']];
+const BREAK_MENU = [['line-break', 'Line break', 'Continue within the paragraph', 'corner-down-left'],
+  ['page-break', 'Page break', 'Start a new page in the PDF preview', 'file-plus-2']];
+const TOOL_MENUS = { block: BLOCKS, env: ENV_MENU, align: ALIGN_MENU, break: BREAK_MENU };
 
 let ws; // the single workspace instance
 
@@ -49,6 +57,7 @@ class Workspace {
   constructor({ name, original, start, starter, isNew, suggestion, onExit }) {
     Object.assign(this, { name, original, starter, isNew, suggestion, onExit });
     this.source = start;
+    this.modeScroll = {};
     this.el = $('#ws');
     this.el.hidden = false;
     document.body.classList.add('ws-open');
@@ -62,6 +71,7 @@ class Workspace {
 
     // Visual
     this.visual = new VisualDoc($('#ws-visual-doc'), {
+      signal: this.ac.signal,
       onChange: (src) => this.update(src, 'visual'),
       onActive: (type) => { const l = $('#ws-block-label'); const m = BLOCKS.find((x) => x[0] === type); if (l && m) l.textContent = m[1]; },
     });
@@ -95,7 +105,16 @@ class Workspace {
       else if (e.key === 'Escape' && !document.querySelector('.math-pop, .cm-tooltip-autocomplete, .link-pop, dialog[open]') && !$('#ws-drawer').hidden) this.toggleDrawer(false);
     });
     on(window, 'beforeunload', () => this.saveNow());
-    on(window, 'resize', () => this.fitPages());
+    const zoom = $('#ws-zoom');
+    const savedZoom = localStorage.getItem(ZOOM_KEY);
+    zoom.value = [...zoom.options].some((option) => option.value === savedZoom) ? savedZoom : 'width';
+    on(zoom, 'change', () => {
+      localStorage.setItem(ZOOM_KEY, zoom.value);
+      this.fitPages();
+    });
+    this.resizeObserver = new ResizeObserver(() => this.fitPages());
+    this.resizeObserver.observe($('#ws-visual'));
+    this.resizeObserver.observe($('#ws-prev'));
 
     this.setMode(this.mode, true);
     this.update(start, null);
@@ -106,18 +125,50 @@ class Workspace {
   /* ----- modes ----- */
   setMode(mode, first = false) {
     if (!first && mode === this.mode) return;
-    if (!first) this.source = this.mode === 'visual' ? this.visual.getSource() : this.cm.state.doc.toString();
+    const visualView = $('#ws-visual');
+    const preview = $('#ws-prev');
+    if (!first) {
+      clearTimeout(this.pt);
+      const leavingVisual = this.mode === 'visual';
+      const view = leavingVisual ? visualView : preview;
+      this.modeScroll[this.mode] = [view.scrollLeft, view.scrollTop];
+      if (leavingVisual) {
+        const selection = getSelection();
+        this.visualRange = selection.rangeCount && this.visual.root.contains(selection.getRangeAt(0).commonAncestorContainer)
+          ? selection.getRangeAt(0).cloneRange() : null;
+        this.visual.flushChange();
+        this.visualSource = this.source;
+      } else this.source = this.cm.state.doc.toString();
+    }
     this.mode = mode;
     localStorage.setItem(MODE_KEY, mode);
     $$('[data-ws="mode"]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.mode === mode)));
     this.el.dataset.mode = mode;
-    $('#ws-visual').hidden = mode !== 'visual';
+    visualView.hidden = mode !== 'visual';
     $('#ws-latex').hidden = mode !== 'latex';
+    this.fitPages();
     if (mode === 'visual') {
-      this.visual.load(this.source);
-      this.visual.focusEmpty();
+      if (this.visualSource !== this.source) {
+        this.visual.load(this.source);
+        this.visualSource = this.source;
+        this.visualRange = null;
+        this.visual.focusEmpty();
+      } else if (this.visualRange) {
+        this.visual.root.focus({ preventScroll: true });
+        const selection = getSelection();
+        selection.removeAllRanges();
+        selection.addRange(this.visualRange);
+      }
+      visualView.scrollTo(...(this.modeScroll.visual || [0, 0]));
+    } else {
+      if (this.cm.state.doc.toString() !== this.source) setDoc(this.cm, this.source);
+      this.renderPreview();
+      requestAnimationFrame(() => {
+        if (this.mode !== 'latex' || this.ac.signal.aborted) return;
+        this.cm.focus();
+        preview.scrollTo(...(this.modeScroll.latex || [0, 0]));
+      });
     }
-    else { if (this.cm.state.doc.toString() !== this.source) setDoc(this.cm, this.source); this.renderPreview(); requestAnimationFrame(() => this.cm.focus()); }
     $('#ws-hint').innerHTML = mode === 'visual'
       ? 'Type as normal text · <kbd>$x$</kbd> becomes a formula · <kbd>[[page]]</kbd> a link · <kbd>##</kbd>␣ a section · <kbd>⌘M</kbd> formula'
       : 'Type <kbd>\\</kbd> for LaTeX commands · <kbd>[[</kbd> for pages · <kbd>\\begin{</kbd> for environments · <kbd>⌘F</kbd> search';
@@ -133,6 +184,7 @@ class Workspace {
 
   // LaTeX mode: the preview is typeset as A4 pages, like the compiled PDF
   renderPreview() {
+    if (this.mode !== 'latex' || this.previewSource === this.source) return;
     const prev = $('#ws-prev');
     const flow = document.createElement('div');
     const date = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -160,6 +212,7 @@ class Workspace {
     newPage();
     for (const el of [...flow.childNodes]) {
       if (el.nodeType === 3 && !el.nodeValue.trim()) continue;
+      if (el.classList?.contains('page-break')) { newPage(); continue; }
       body.append(el);
       if (body.scrollHeight > body.clientHeight + 1 && body.childNodes.length > 1) {
         el.remove();
@@ -173,11 +226,20 @@ class Workspace {
     $('#pdf-count').textContent = `${count} page${count === 1 ? '' : 's'}`;
     this.fitPages();
     prev.scrollTop = keep;
+    this.previewSource = this.source;
   }
   fitPages() {
-    const prev = $('#ws-prev');
-    const w = prev.clientWidth - 48;
-    prev.style.setProperty('--pdf-zoom', String(Math.min(1, Math.max(0.35, w / 794))));
+    const view = this.mode === 'visual' ? $('#ws-visual') : $('#ws-prev');
+    if (!view.clientWidth || !view.clientHeight) return;
+    const style = getComputedStyle(view);
+    const width = view.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+    const height = view.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+    const value = $('#ws-zoom').value;
+    const fitWidth = width / A4_WIDTH;
+    const scale = value === 'width' ? Math.min(1, fitWidth)
+      : value === 'page' ? Math.min(1, fitWidth, height / A4_HEIGHT)
+      : Number(value);
+    view.style.setProperty('--paper-zoom', String(Math.max(.05, scale)));
   }
   printPdf() {
     if (this.mode !== 'latex') this.setMode('latex');
@@ -221,13 +283,16 @@ class Workspace {
   saveNow(flash = false) {
     clearTimeout(this.st);
     if (this.mode === 'visual') this.source = this.visual.getSource();
-    if (this.isNew && !drafts.get(this.name) && (!this.source.trim() || this.source.trim() === this.starter.trim())) {
+    const draft = drafts.get(this.name);
+    if (this.isNew && !draft && (!this.source.trim() || this.source.trim() === this.starter.trim())) {
       this.saveState('clean');
       return;
     }
-    if (this.source === this.original && !this.isNew) { drafts.clear(this.name); this.saveState('clean'); return; }
-    const ok = drafts.set(this.name, { source: this.source, savedAt: Date.now(), isNew: this.isNew });
-    this.saveState(ok ? 'saved' : 'error', new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }));
+    if (this.source === this.original && !this.isNew) { if (draft) drafts.clear(this.name); this.saveState('clean'); return; }
+    const unchanged = draft?.source === this.source && draft.isNew === this.isNew;
+    const savedAt = unchanged ? draft.savedAt : Date.now();
+    const ok = unchanged || drafts.set(this.name, { source: this.source, savedAt, isNew: this.isNew });
+    this.saveState(ok ? 'saved' : 'error', new Date(savedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }));
     if (flash) $('#ws-save').animate([{ background: 'var(--tonal)' }, { background: 'transparent' }], 700);
   }
   discard() {
@@ -246,6 +311,11 @@ class Workspace {
   }
   destroy() {
     this.ac.abort();
+    clearTimeout(this.pt);
+    clearTimeout(this.ot);
+    clearTimeout(this.st);
+    clearTimeout(this.visual.timer);
+    this.resizeObserver.disconnect();
     this.cm.destroy();
     document.querySelector('.math-pop')?.remove();
     document.querySelector('.link-pop')?.remove();
@@ -303,11 +373,11 @@ class Workspace {
   openMenu(btn) {
     document.querySelector('.ws-menu')?.remove();
     const kind = btn.dataset.menu;
-    const items = kind === 'block' ? BLOCKS : ENV_MENU;
+    const items = TOOL_MENUS[kind];
     const menu = document.createElement('div');
     menu.className = 'ws-menu';
     menu.setAttribute('role', 'menu');
-    menu.innerHTML = items.map(([v, label, note, icon], i) => `<button type="button" role="menuitem" data-v="${v}" tabindex="${i ? -1 : 0}"><i data-lucide="${icon}"></i><span><b>${label}</b><small>${note}</small></span></button>`).join('');
+    menu.innerHTML = items.map(([v, label, note, icon], i) => `<button type="button" role="menuitem" data-v="${v}" tabindex="${i ? -1 : 0}"><i data-lucide="${icon}"></i><span><b>${label}</b>${note ? `<small>${note}</small>` : ''}</span></button>`).join('');
     document.body.append(menu);
     icons();
     const r = btn.getBoundingClientRect();
@@ -323,7 +393,7 @@ class Workspace {
       const b = ev.target.closest('[data-v]');
       if (!b) return;
       close();
-      if (kind === 'block') this.command('block', null, b.dataset.v); else this.command('env', null, b.dataset.v);
+      this.command(kind === 'break' ? b.dataset.v : kind, null, b.dataset.v);
     });
     menu.addEventListener('keydown', (ev) => {
       const i = btns.indexOf(document.activeElement);

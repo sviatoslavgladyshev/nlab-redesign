@@ -1,6 +1,7 @@
 // The search page: live results with summaries, kinds, filters, the query syntax help and forum matches.
 // The search engine itself (index, query language, ranking) is in core/search-engine.js.
 import { icons } from '../../ui/app.js';
+import { startPageLoading } from '../../ui/page-loading.js';
 import { esc, pageUrl, displayTitle } from '../../core/nlab.js';
 import { allTopics } from '../../core/forum-data.js';
 import { dbEnabled, smartSearch } from '../../core/db.js';
@@ -53,7 +54,7 @@ export async function renderSearch(q0) {
     <p class="sr-explain" hidden></p>
     <div class="sr-chips" role="tablist" aria-label="Kind of page"></div>
     <div class="sr-layout">
-      <div class="sr-main" aria-live="polite">${'<div class="sr-skel"><span></span><span></span><span></span></div>'.repeat(5)}</div>
+      <div class="sr-main" aria-live="polite"></div>
       <aside class="sr-side"></aside>
     </div>
   </div>`;
@@ -137,14 +138,25 @@ export async function renderSearch(q0) {
     icons();
   };
 
-  let topicsP, seq = 0, explainTree = () => '';
+  let topicsP, stopSearch, seq = 0, explainTree = () => '';
   const run = async (q) => {
     const my = ++seq;
-    const mod = await searchMod;
-    explainTree = mod.explain;
     const qq = q.trim();
-    const [res, topics] = await Promise.all([qq ? mod.searchAll(qq, { field: st.field, where: st.where, sort: st.sort }) : { hits: [] }, (topicsP ??= allTopics().catch(() => []))]);
+    stopSearch?.();
+    const stop = qq ? startPageLoading('Searching…') : () => {};
+    stopSearch = stop;
+    let mod, res, topics;
+    try {
+      mod = await searchMod;
+      [res, topics] = qq
+        ? await Promise.all([mod.searchAll(qq, { field: st.field, where: st.where, sort: st.sort }), (topicsP ??= allTopics().catch(() => []))])
+        : [{ hits: [] }, []];
+    } catch {
+      if (my === seq) $('.sr-main', body).textContent = 'Search is unavailable. Try again in a moment.';
+      return;
+    } finally { stop(); }
     if (my !== seq) return; // a newer query has started
+    explainTree = mod.explain;
     st.q = qq; st.shown = SR_PAGE; st.hits = res.hits; st.tree = res.tree; st.advanced = res.advanced;
     hl = (t) => mod.highlight(t, qq);
     const words = qq ? mod.terms(qq) : [];

@@ -2,10 +2,12 @@
 import { busy, icons } from '../../ui/app.js';
 import { esc, pageUrl, findExistingTitle } from '../../core/nlab.js';
 import { isExcludedPage } from '../../core/page-visibility.js';
-import { $, params, setHero, link } from './shell.js';
+import { $, params, setHero, link, toast } from './shell.js';
 import { currentUser, dbEnabled, myPublications } from '../../core/db.js';
 import { drafts as draftStore, draftsSynced } from '../../core/drafts.js';
 import { PAGE_STARTERS, starterSource } from './templates.js';
+import { articleEditorOptions, loadArticle } from './article.js';
+import { withPageLoading } from '../../ui/page-loading.js';
 
 const titleHint = 'Use the name of the concept, result or person, as you would in a dictionary.';
 const titleConflict = (name) => `<strong>Page already exists</strong> <a href="${esc(pageUrl(name))}">${esc(name)}</a> is already in the wiki. Choose another title, or <a href="${esc(pageUrl(name, 'suggest'))}">suggest an edit</a>.`;
@@ -13,9 +15,11 @@ const titleConflict = (name) => `<strong>Page already exists</strong> <a href="$
 function renderDrafts() {
   const list = $('#draft-list');
   if (!list) return;
-  $('.w-sync').innerHTML = draftsSynced()
+  const sync = $('.w-sync');
+  const syncMessage = draftsSynced()
     ? 'Drafts sync with your account.'
     : 'Saved in this browser. <button type="button" class="linkish" data-acct="in">Sign in</button> to keep them on every device.';
+  if (sync.innerHTML !== syncMessage) sync.innerHTML = syncMessage;
   const drafts = draftStore.list();
   const html = drafts.length ? `<ul>${drafts.map((d) => {
         const excluded = isExcludedPage(d.name);
@@ -23,11 +27,11 @@ function renderDrafts() {
         const name = esc(d.name);
         const saved = new Date(d.savedAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
         return `<li class="w-draft-row">
-          <a class="w-draft-main" href="${editUrl}"><b>${name}</b><span>${d.isNew ? 'New article' : 'Edit of an existing page'} · saved ${saved}</span></a>
+          <a class="w-draft-main" href="${editUrl}"${excluded ? '' : ` data-open-editor="${name}"`}><b>${name}</b><span>${d.isNew ? 'New article' : 'Edit of an existing page'} · saved ${saved}</span></a>
           <details class="w-draft-menu" name="draft-actions">
             <summary aria-label="Actions for ${name}"><span aria-hidden="true">⋯</span></summary>
             <div class="w-draft-actions">
-              <a href="${editUrl}">${excluded ? 'Copy to a new title' : 'Keep editing'}</a>
+              <a href="${editUrl}"${excluded ? '' : ` data-open-editor="${name}"`}>${excluded ? 'Copy to a new title' : 'Keep editing'}</a>
               <button type="button" data-delete-draft="${name}">Remove</button>
             </div>
           </details>
@@ -89,6 +93,12 @@ export function renderWrite() {
   });
   const draftStatus = $('.w-draft-status', draftSection);
   draftSection.addEventListener('click', async (event) => {
+    const edit = event.target.closest('[data-open-editor]');
+    if (edit && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) {
+      event.preventDefault();
+      resumeEditor(edit.dataset.openEditor, edit.closest('#publications') ? '#publications' : '#drafts');
+      return;
+    }
     const button = event.target.closest('[data-delete-draft]');
     if (!button) return;
     const name = button.dataset.deleteDraft;
@@ -165,7 +175,7 @@ export function renderWrite() {
       if (input.value.trim() !== q) return;
       const existing = draftStore.list().find((d) => d.name.toLowerCase() === q.toLowerCase());
       if (existing) {
-        hint.innerHTML = `You already have a draft with this title. <a href="${esc(pageUrl(existing.name, 'edit'))}">Keep editing that draft</a> or choose another title.`;
+        hint.innerHTML = `You already have a draft with this title. <a href="${esc(pageUrl(existing.name, 'edit'))}" data-open-editor="${esc(existing.name)}">Keep editing that draft</a> or choose another title.`;
         hint.classList.add('w-conflict');
         input.focus();
         return;
@@ -174,13 +184,21 @@ export function renderWrite() {
       if (!draftStore.set(q, { source, savedAt: Date.now(), isNew: true })) {
         throw new Error('Could not save the draft in this browser.');
       }
-      openCreatedDraft(openWorkspace, q, source);
+      input.value = '';
+      showTitleMatch(null);
+      openWorkspaceEditor(openWorkspace, { name: q, original: '', start: source, isNew: true }, '#drafts');
     } catch (error) {
       hint.textContent = error.message || 'Could not open the editor.';
       hint.classList.add('w-conflict');
     } finally {
       stop();
     }
+  });
+  hint.addEventListener('click', (event) => {
+    const edit = event.target.closest('[data-open-editor]');
+    if (!edit || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    resumeEditor(edit.dataset.openEditor, '#drafts');
   });
   function showUnavailableTitle() {
     hint.textContent = 'This title is unavailable. Choose a different title.';
@@ -189,24 +207,65 @@ export function renderWrite() {
   }
 }
 
-function openCreatedDraft(openWorkspace, name, source) {
-  const publishedUrl = new URL(pageUrl(name), document.baseURI);
-  const draftUrl = new URL(pageUrl(name, 'new='), document.baseURI);
-  const draftsUrl = new URL('write#drafts', document.baseURI);
-  const workspace = openWorkspace({
-    name, original: '', start: source, isNew: true,
+let activeEditor, pendingReturn, openingEditor = false;
+
+async function resumeEditor(name, section, push = true) {
+  if (activeEditor || openingEditor) return;
+  openingEditor = true;
+  const entry = location.href;
+  try {
+    await withPageLoading('Opening the editor…', async () => {
+      const [{ openWorkspace }, article] = await Promise.all([import('../editor/editor.js'), loadArticle(name, { fresh: true })]);
+      if (location.href === entry) openWorkspaceEditor(openWorkspace, articleEditorOptions(article), section, push);
+    });
+  } catch (error) {
+    toast(error.message || 'Could not open the editor.');
+    if (!push) finishReturn(section);
+  } finally {
+    openingEditor = false;
+  }
+}
+
+function openWorkspaceEditor(openWorkspace, options, section, push = true) {
+  const { name, isNew, suggestion } = options;
+  const editorUrl = new URL(pageUrl(name, isNew ? 'new=' : suggestion ? 'suggest=' : 'edit='), document.baseURI);
+  activeEditor = openWorkspace({
+    ...options,
     onExit: (how) => {
-      removeEventListener('popstate', onBack);
-      location.replace(how ? publishedUrl : draftsUrl);
+      activeEditor = null;
+      if (how) {
+        location.replace(new URL(pageUrl(name), document.baseURI));
+      } else if (history.state?.workspaceEditor) {
+        pendingReturn = section;
+        history.back();
+      } else {
+        finishReturn(section);
+      }
     },
   });
-  function onBack() {
-    if (location.pathname !== draftUrl.pathname) workspace.close();
-  }
-  history.pushState(null, '', draftUrl);
+  const entry = { workspaceEditor: { name, section } };
+  if (push) history.pushState(entry, '', editorUrl);
+  else history.replaceState(entry, '', editorUrl);
   document.title = `${name} — nLab editor`;
-  addEventListener('popstate', onBack);
 }
+
+function finishReturn(section) {
+  history.replaceState(null, '', new URL(`write${section}`, document.baseURI));
+  document.title = 'Your workspace — nLab';
+  renderDrafts();
+  $('#draft-list .w-draft-menu[open]')?.removeAttribute('open');
+  $(section)?.scrollIntoView({ block: 'start', behavior: 'instant' });
+}
+
+addEventListener('popstate', (event) => {
+  if (!document.body.classList.contains('write-page')) return;
+  const entry = event.state?.workspaceEditor;
+  if (!entry && activeEditor) activeEditor.close();
+  else if (!entry && pendingReturn) {
+    finishReturn(pendingReturn);
+    pendingReturn = null;
+  } else if (entry && !activeEditor) resumeEditor(entry.name, entry.section, false);
+});
 
 const publicationRequests = new Map();
 
@@ -227,7 +286,7 @@ function fetchPublications(userId, cacheKey) {
 function renderPublications(list, pages) {
   const html = pages.length ? `<ul>${pages.map((page) => `<li class="w-draft-row">
     <a class="w-draft-main" href="${esc(pageUrl(page.name))}"><b>${esc(page.name)}</b><span>Updated ${new Date(page.updated_at).toLocaleDateString()}</span></a>
-    <a class="tbtn" href="${esc(pageUrl(page.name, 'edit'))}">Edit</a>
+    <a class="tbtn" href="${esc(pageUrl(page.name, 'edit'))}" data-open-editor="${esc(page.name)}">Edit</a>
   </li>`).join('')}</ul>` : '<p class="w-none">No published pages yet.</p>';
   if (list.dataset.rendered !== html) {
     list.innerHTML = html;

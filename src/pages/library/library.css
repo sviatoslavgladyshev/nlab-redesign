@@ -76,12 +76,9 @@
 .lib-card.person .av { --s: 48px; width: var(--s); height: var(--s); flex: none; border-radius: 50%; display: grid; place-items: center; background: hsl(var(--h) 45% 88%); color: hsl(var(--h) 45% 26%); font: 700 16px var(--ui); }
 .lc-body { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .lib-card.person .lc-meta { margin-top: 0; padding-top: 0; }
-.lib-loading, .lib-empty { grid-column: 1 / -1; padding: 40px 0; color: var(--muted); }
+.lib-empty { grid-column: 1 / -1; padding: 40px 0; color: var(--muted); }
 .lib-empty .tbtn { margin-top: 12px; }
 .lib-more { display: flex; justify-content: center; margin-top: 24px; }
-.ll-skel { display: block; height: 10px; margin: 5px 0; border-radius: 5px; width: 100%; background: linear-gradient(90deg, #eef0f3 0%, #f6f7f9 50%, #eef0f3 100%); background-size: 200% 100%; animation: shimmer 1.4s infinite; }
-.ll-skel.short { width: 60%; }
-@keyframes shimmer { to { background-position: -200% 0; } }
 @media (max-width: 900px) {
   .lib-layout { grid-template-columns: 1fr; gap: 16px; }
   .lib-side { position: static; max-height: none; }

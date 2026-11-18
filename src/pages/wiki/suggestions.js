@@ -1,6 +1,7 @@
 import { currentUser, dbEnabled, deleteReviewedSuggestion, embedPage, reviewSuggestion, suggestionsInbox } from '../../core/db.js';
 import { esc, forgetPage, pageUrl } from '../../core/nlab.js';
 import { $, setHero } from './shell.js';
+import { withPageLoading } from '../../ui/page-loading.js';
 
 export function showSuggestions() {
   const body = $('#a-body');
@@ -24,9 +25,9 @@ export function showSuggestions() {
       status.innerHTML = '<button type="button" class="linkish" data-acct="in">Sign in</button> to review suggestions.';
       return;
     }
-    status.textContent = message || 'Loading suggestions…';
+    status.textContent = message;
     try {
-      const rows = await suggestionsInbox();
+      const rows = await withPageLoading('Loading suggestions…', suggestionsInbox);
       if (request !== generation) return;
       status.textContent = message || (rows.length ? '' : 'No suggestions for your pages yet.');
       for (const row of rows) {

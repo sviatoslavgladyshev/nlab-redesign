@@ -64,12 +64,6 @@
 .a-ctx a:hover { color: var(--link); }
 .a-ctx .hide { display: none; }
 
-/* Skeleton */
-.skel { display: block; height: 1em; width: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--paper-2) 0%, var(--rule) 50%, var(--paper-2) 100%); background-size: 200% 100%; animation: shimmer 1.4s infinite; }
-.a-hero .skel { height: .9em; }
-.skel-block .skel { height: 16px; margin: 14px 0; }
-@keyframes shimmer { to { background-position: -200% 0; } }
-
 /* ---------- Article typography ---------- */
 .a-body {
   max-width: 720px; min-width: 0; counter-reset: s2;
@@ -184,8 +178,6 @@ footer { margin-top: 0; }
 .a-body ul.link-list .ll-ex .katex { font-size: 1em; }
 .a-body ul.link-list .ll-ex .eq { display: none; }
 .a-body ul.link-list .ll-ex em { font-style: italic; }
-.ll-skel { display: block; height: 10px; margin: 4px 0; border-radius: 5px; width: 100%; background: linear-gradient(90deg, #eef0f3 0%, #f6f7f9 50%, #eef0f3 100%); background-size: 200% 100%; animation: shimmer 1.4s infinite; }
-.ll-skel.short { width: 60%; }
 .a-body ul.link-list a.missing { border-style: dashed; }
 .a-body ul.link-list a.missing .ll-t { color: var(--muted); }
 
@@ -204,6 +196,11 @@ footer { margin-top: 0; }
 .a-body figure.nfig.f-left { float: left; margin: 0 1.5em 1em 0; max-width: 45%; }
 .a-body figure figcaption { font: 13px var(--ui); color: var(--muted); margin-top: 6px; }
 .a-body .center { text-align: center; }
+.align-left { text-align: left; }
+.align-center { text-align: center; }
+.align-right { text-align: right; }
+.align-justify { text-align: justify; }
+.a-body > .page-break { height: 0; }
 .a-body a.label-anchor { display: inline; }
 .a-body code.math-fallback, .lc-ex code.math-fallback { font-family: var(--text); font-style: italic; font-size: .95em; background: none; padding: 0; color: var(--ink-2); }
 
@@ -300,14 +297,6 @@ footer { margin-top: 0; }
 .sr-try a { padding: 8px 14px; border-radius: 999px; background: var(--paper-2); font: 500 14px var(--ui); color: var(--ink-2) !important; text-decoration: none !important; }
 .sr-try a:hover { background: var(--tonal); color: var(--on-tonal) !important; }
 
-.sr-skel { display: flex; flex-direction: column; gap: 8px; padding: 16px 0 16px 54px; position: relative; }
-.sr-skel::before { content: ""; position: absolute; left: 0; top: 18px; width: 38px; height: 38px; border-radius: 12px; }
-.sr-skel span, .sr-skel::before { background: linear-gradient(90deg, var(--paper-2) 25%, var(--rule) 50%, var(--paper-2) 75%); background-size: 200% 100%; animation: sr-shimmer 1.2s infinite linear; border-radius: 6px; }
-.sr-skel span { height: 12px; }
-.sr-skel span:nth-child(1) { width: 34%; height: 16px; }
-.sr-skel span:nth-child(2) { width: 92%; }
-.sr-skel span:nth-child(3) { width: 70%; }
-@keyframes sr-shimmer { to { background-position: -200% 0; } }
 
 @media (max-width: 900px) {
   .sr-layout { grid-template-columns: 1fr; gap: 28px; }

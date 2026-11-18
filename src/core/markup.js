@@ -182,7 +182,8 @@ export function renderSource(src, { context = false } = {}) {
   s = s.replace(/(^|[^\\$])\$(?!\$)((?:\\\$|[^$\n])*?[^\s$](?:\\\$|[^$\n])*?)\$/g, (_, pre, t) => pre + ph(math, `<span class="m" data-tex="${esc(t)}">${renderMath(t, false)}</span>`));
 
   // Text-mode LaTeX (outside math): layout commands are dropped, formatting commands applied
-  s = s.replace(/^[ \t]*\\(tableofcontents|maketitle|linebreak|newline|newpage|clearpage|noindent|par|medskip|bigskip|smallskip|vfill|hfill|centering)\b[ \t]*$/gm, '');
+  s = s.replace(/^[ \t]*\\(?:newpage|clearpage)[ \t]*$/gm, '\n<div class="page-break"></div>\n');
+  s = s.replace(/^[ \t]*\\(tableofcontents|maketitle|linebreak|newline|noindent|par|medskip|bigskip|smallskip|vfill|hfill|centering)\b[ \t]*$/gm, '');
   s = s.replace(/\\(vspace|hspace)\*?\{[^}]*\}/g, '');
   s = s.replace(/\\(linebreak|newline)\b|\\\\(?=\s*$)/gm, '<br>');
   s = s.replace(/\\(noindent|medskip|bigskip|smallskip|par)\b\s*/g, '');

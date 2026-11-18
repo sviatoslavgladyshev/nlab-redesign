@@ -14,6 +14,7 @@ export function setHero({ title, crumb, meta = '', actions = '' }) {
   metaLine.innerHTML = meta;
   metaLine.hidden = !meta;
   $('#a-actions').innerHTML = actions;
+  $('.a-hero').hidden = false;
   icons();
 }
 export const btn = (label, icon, attrs) => `<button type="button" class="tbtn" ${attrs}><i data-lucide="${icon}"></i><span>${esc(label)}</span></button>`;
