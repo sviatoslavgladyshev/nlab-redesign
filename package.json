@@ -9,9 +9,12 @@
     "build": "vite build && node scripts/seo.mjs",
     "build:pages": "npm run snapshot && npm run build",
     "preview": "vite preview",
-    "og": "node scripts/og-articles.mjs"
+    "og": "node scripts/og-articles.mjs",
+    "db:import": "node scripts/db-import.mjs",
+    "db:embed": "node scripts/db-embed.mjs"
   },
   "devDependencies": {
+    "@huggingface/transformers": "^4.3.2",
     "playwright-core": "^1.65.1",
     "vite": "^8.3.8"
   },

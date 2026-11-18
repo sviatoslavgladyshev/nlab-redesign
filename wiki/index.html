@@ -159,12 +159,20 @@
   <form method="dialog">
     <h2 id="pub-title">Publish to the nLab</h2>
     <p class="pub-sum" id="pub-sum"></p>
+    <div class="pub-db" id="pub-db" hidden>
+      <p id="pub-db-intro"></p>
+      <label class="pub-note">What did you change? <span>(optional)</span><input id="pub-note" type="text" maxlength="300" placeholder="e.g. added an example and fixed a typo" autocomplete="off"></label>
+      <p class="si-err" id="pub-err" role="alert"></p>
+    </div>
+    <details class="pub-nlab" id="pub-nlab">
+    <summary id="pub-nlab-sum">Also send it to ncatlab.org</summary>
     <p id="pub-intro">The nLab stores every page on ncatlab.org. Publishing takes three short steps:</p>
     <ol class="pub-steps">
       <li><b>Copy your page source.</b><button type="button" class="tbtn" id="pub-copy"><i data-lucide="copy"></i><span>Copy page source</span></button></li>
       <li><b id="pub-step-paste">Paste it into the nLab editor and press “Submit”.</b><a class="tbtn" id="pub-open" target="_blank" rel="noopener"><i data-lucide="external-link"></i><span>Open the nLab editor</span></a></li>
       <li><b id="pub-step-forum">For anything beyond a typo, say what you changed in the forum.</b><a class="tbtn" id="pub-forum"><i data-lucide="messages-square"></i><span>Start a forum topic</span></a></li>
     </ol>
+    </details>
     <div class="modal-actions">
       <button class="tbtn" value="cancel">Not yet</button>
       <button class="tbtn primary" type="button" id="pub-done"><i data-lucide="check"></i><span>I’ve published it</span></button>

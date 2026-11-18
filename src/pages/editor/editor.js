@@ -14,6 +14,10 @@ const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 
 import { drafts } from '../../core/drafts.js';
+import { dbEnabled, currentUser, savePage, suggestEdit } from '../../core/db.js';
+import { forgetPage } from '../../core/nlab.js';
+import { openAccount } from '../../ui/account.js';
+import { busy } from '../../ui/app.js';
 export { drafts };
 const MODE_KEY = 'nlab-editor-mode';
 
@@ -399,9 +403,47 @@ class Workspace {
     $('#pub-copy').onclick = async () => {
       try { await navigator.clipboard.writeText(this.source); $('#pub-copy span').textContent = 'Copied'; } catch { $('#pub-copy span').textContent = 'Copy failed: select the source in LaTeX mode'; }
     };
-    $('#pub-done span').textContent = this.suggestion ? 'I’ve sent the suggestion' : 'I’ve published it';
-    $('#pub-done').onclick = () => { drafts.clear(this.name); dlg.close(); this.destroy(); this.onExit?.(this.suggestion ? 'suggested' : 'published'); };
     $('#pub-copy span').textContent = 'Copy page source';
+    const done = (how) => { drafts.clear(this.name); dlg.close(); this.destroy(); this.onExit?.(how); };
+
+    // With the site's database: publish (or suggest) right here, live at once for everyone.
+    // Sending the page to ncatlab.org as well stays available, folded away.
+    const viaDb = dbEnabled;
+    const signedIn = !!currentUser();
+    $('#pub-db').hidden = !viaDb;
+    $('#pub-nlab').open = !viaDb;
+    $('#pub-nlab').classList.toggle('plain', !viaDb);
+    $('#pub-err').textContent = '';
+    $('#pub-note').value = '';
+    if (viaDb) {
+      $('#pub-title').textContent = this.suggestion ? 'Suggest an edit' : 'Publish';
+      $('#pub-db-intro').textContent = !signedIn
+        ? `Sign in to ${this.suggestion ? 'send your suggestion' : 'publish'}: your name goes with your contribution.`
+        : this.suggestion ? 'Your suggestion is saved with the page, where its authors can review it.' : 'Your page goes live on this site straight away, with your name in its history.';
+      $('#pub-note').closest('label').hidden = !signedIn;
+      $('#pub-nlab-sum').textContent = this.suggestion ? 'Or send it to the nLab yourself' : 'Also send it to ncatlab.org';
+    }
+    const primary = $('#pub-done');
+    const label = !viaDb ? (this.suggestion ? 'I’ve sent the suggestion' : 'I’ve published it')
+      : !signedIn ? 'Sign in' : this.suggestion ? 'Send suggestion' : 'Publish now';
+    primary.innerHTML = `<i data-lucide="${!viaDb ? 'check' : !signedIn ? 'log-in' : this.suggestion ? 'send' : 'cloud-upload'}"></i><span>${label}</span>`;
+    icons();
+    primary.onclick = async () => {
+      if (!viaDb) return done(this.suggestion ? 'suggested' : 'published');
+      if (!currentUser()) { dlg.close(); openAccount('in'); return; }
+      const stop = busy(primary);
+      $('#pub-err').textContent = '';
+      try {
+        const note = $('#pub-note').value.trim();
+        if (this.suggestion) await suggestEdit(this.name, this.source, note);
+        else await savePage(this.name, this.source, { summary: pageSummary(this.source), links: pageLinks(this.source), note });
+        forgetPage(this.name);
+        done(this.suggestion ? 'suggested-db' : 'published-db');
+      } catch (ex) {
+        $('#pub-err').textContent = ex.message || String(ex);
+        stop();
+      }
+    };
     dlg.showModal();
   }
 }
@@ -409,3 +451,13 @@ class Workspace {
 // small helper so the formula preview in the symbol palette isn't empty in LaTeX mode
 export const texToHtml = (tex) => katex.renderToString(tex, { throwOnError: false });
 export { ENVS };
+
+// For the database: a page's summary (its first real paragraph) and the pages it links to
+function pageSummary(source) {
+  const box = document.createElement('div');
+  box.innerHTML = renderSource(source);
+  const p = [...box.querySelectorAll('p')].map((x) => x.textContent.replace(/\s+/g, ' ').trim()).find((t) => t.length > 40) || '';
+  return p.length > 230 ? `${p.slice(0, 230).replace(/\s+\S*$/, '')}…` : p;
+}
+const pageLinks = (source) => [...new Set([...source.replace(/\[\[!include[^\]]*\]\]/g, '').matchAll(/\[\[([^\]|#!][^\]|#]*)/g)]
+  .map((m) => m[1].trim().toLowerCase()).filter(Boolean))].slice(0, 2000);

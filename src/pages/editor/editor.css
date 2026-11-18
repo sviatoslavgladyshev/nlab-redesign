@@ -308,3 +308,16 @@ body.ws-open { overflow: hidden; }
   .ws-latex { grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); }
   .pdf-bar .ws-label { display: none; }
 }
+
+/* publish dialog with the site's database */
+.pub-db { display: flex; flex-direction: column; gap: 10px; }
+.pub-db p { margin: 0; color: var(--ink-2); }
+.pub-note { display: flex; flex-direction: column; gap: 6px; font: 600 13px var(--ui); color: var(--ink); }
+.pub-note span { font-weight: 400; color: var(--muted); }
+.pub-note input { font: 15px var(--ui); padding: 10px 12px; border: 1px solid var(--outline); border-radius: 10px; background: var(--surface, #fff); color: var(--ink); }
+.pub-note input:focus { outline: 2px solid var(--primary); outline-offset: -1px; border-color: transparent; }
+.pub-nlab { border: 1px solid var(--rule); border-radius: 14px; padding: 10px 14px; }
+.pub-nlab summary { cursor: pointer; font: 600 13.5px var(--ui); color: var(--primary); }
+.pub-nlab[open] summary { margin-bottom: 8px; }
+.pub-nlab.plain { border: 0; padding: 0; }
+.pub-nlab.plain summary { display: none; }

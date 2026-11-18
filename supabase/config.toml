@@ -1,0 +1,3 @@
+# Settings for the Supabase CLI (npx supabase functions deploy search)
+[functions.search]
+verify_jwt = false

@@ -402,3 +402,22 @@ html[data-mode="dark"] .a-body .a-cat { color: color-mix(in srgb, var(--c) 45%, 
 @media (max-width: 560px) { .adhd-demo { grid-template-columns: 1fr; } .adhd-intro form { padding: 24px 20px 20px; } .adhd-actions .tbtn { flex: 1; justify-content: center; } }
 .adhd-demo .focus-read b.bx { font-weight: 700; color: var(--ink); }
 .w-sync { font: 14px var(--ui); color: var(--muted); margin: -6px 0 14px; }
+
+/* database: full-text hits, backlinks, "did you mean", publishing */
+.sr-intext { color: var(--primary); font-weight: 600; }
+.sr-snip { font-family: var(--ui); font-size: 14px; color: var(--muted); }
+.sr-snip mark { color: var(--ink); }
+.a-backlinks { margin-top: 48px; padding-top: 26px; border-top: 1px solid var(--rule); font-family: var(--ui); }
+.a-body .a-backlinks .bl-h { display: flex; align-items: center; gap: 8px; font: 600 15px var(--ui); color: var(--muted); margin: 0 0 14px; letter-spacing: 0; }
+.a-body .a-backlinks .bl-h::before { content: none; }
+.bl-h svg { width: 17px; height: 17px; color: var(--primary); }
+.bl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.a-body .bl-grid a { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: 14px; background: var(--paper-2); color: var(--ink) !important; text-decoration: none !important; transition: background .15s, transform .15s; }
+.a-body .bl-grid a:hover { background: var(--tonal); transform: translateY(-1px); }
+.bl-grid b { font: 600 14.5px/1.3 var(--ui); }
+.bl-grid span { font: 13px/1.45 var(--ui); color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.a-similar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 18px; }
+.a-similar-h { margin: 0 6px 0 0 !important; font: 600 13px var(--ui); color: var(--muted); }
+.a-body .a-similar a { padding: 7px 14px; border-radius: 999px; background: var(--tonal); color: var(--on-tonal) !important; font: 500 14px var(--ui); text-decoration: none !important; }
+.sr-meaning { color: #6b3fa0; } html[data-mode="dark"] .sr-meaning { color: #c58af9; } .a-related + .a-backlinks { margin-top: 28px; padding-top: 0; border-top: 0; }
+.sr-filters[hidden], .sr-help[hidden], .sr-explain[hidden], .sr-ftoggle em[hidden] { display: none !important; }

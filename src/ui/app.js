@@ -13,7 +13,7 @@ import {
   Upload, Copy, Check, Code, Info, RotateCcw, FileCode,
   LogIn, Inbox, Hash, Plus, Send, ArrowLeft, MessageSquarePlus, Undo2, Redo2, Type, ChevronDown, PanelRight, Keyboard,
   CircleHelp, Trash2, ListTree, Omega, TextQuote, Clock, Dices, FilePlus2, CircleCheck, CloudUpload,
-  Play, Moon, Sun, BookText, Menu, User, Split, FlaskConical, Tag, SlidersHorizontal, Filter, MailCheck,
+  Play, Moon, Sun, BookText, Menu, User, Split, FlaskConical, Tag, SlidersHorizontal, Filter, MailCheck, CornerDownRight,
 } from 'lucide';
 
 const ICONS = {
@@ -25,7 +25,7 @@ const ICONS = {
   Upload, Copy, Check, Code, Info, RotateCcw, FileCode,
   LogIn, Inbox, Hash, Plus, Send, ArrowLeft, MessageSquarePlus, Undo2, Redo2, Type, ChevronDown, PanelRight, Keyboard,
   CircleHelp, Trash2, ListTree, Omega, TextQuote, Clock, Dices, FilePlus2, CircleCheck, CloudUpload,
-  Play, Moon, Sun, BookText, Menu, User, Split, FlaskConical, Tag, SlidersHorizontal, Filter, MailCheck,
+  Play, Moon, Sun, BookText, Menu, User, Split, FlaskConical, Tag, SlidersHorizontal, Filter, MailCheck, CornerDownRight,
 };
 // Re-run after inserting markup that contains <i data-lucide="…">
 export const icons = () => createIcons({ icons: ICONS });

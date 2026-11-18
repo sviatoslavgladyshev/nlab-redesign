@@ -1,7 +1,8 @@
 // Content layer.
-//  • Pages: the nLab content mirror on GitHub (github.com/ncatlab/nlab-content) holds the source
-//    of every page and is served with CORS headers, so any page loads straight into this UI.
-//    snapshot/nlab-index.json (scripts/mirror-index.mjs) maps page names and redirects to files.
+//  • Pages: from the site's database (core/db.js, filled by scripts/db-import.mjs, plus every edit
+//    made here). Fallback: the nLab content mirror on GitHub (github.com/ncatlab/nlab-content), served
+//    with CORS headers; snapshot/nlab-index.json (scripts/mirror-index.mjs) maps names to its files.
+import { dbEnabled, getPage } from './db.js';
 //  • Latest changes and the nForum: live through the Vite proxy in dev; in the static build from
 //    the snapshot written by scripts/snapshot.mjs.
 export const ORIGIN = 'https://ncatlab.org';
@@ -90,7 +91,25 @@ export async function resolvePage(name) {
 }
 
 const sourceCache = new Map();
+// The site's database first (it has edits made here); the GitHub mirror when the database is not set
+// up, not reachable, or doesn't have the page.
+const dbPages = new Map();
+async function fromDatabase(name) {
+  if (!dbEnabled) return null;
+  const key = name.trim().toLowerCase();
+  if (!dbPages.has(key)) {
+    const timeout = new Promise((_, no) => setTimeout(() => no(new Error('timeout')), 5000));
+    dbPages.set(key, Promise.race([getPage(name), timeout]).catch(() => null));
+  }
+  const row = await dbPages.get(key);
+  if (!row) dbPages.delete(key);
+  return row && row.source ? { name: row.name, source: row.source, meta: { origin: row.origin, updatedAt: row.updated_at, updatedBy: row.updated_by_name, kind: row.kind } } : null;
+}
+export const forgetPage = (name) => { dbPages.delete(name.trim().toLowerCase()); };
+
 export async function fetchSource(name) {
+  const fromDb = await fromDatabase(name);
+  if (fromDb) return fromDb;
   const e = await resolvePage(name);
   if (!e) {
     if (LIVE) { // brand-new pages may not have reached the mirror yet

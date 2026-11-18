@@ -67,6 +67,34 @@ in `supabase/schema.sql`. Never put the secret key in this repository.
 - "Stay in the loop" sign-ups go to the `subscribers` table (Table Editor → export as CSV).
 - Without `.env`, everything still works and stays in the browser.
 
+## Content database and backend
+
+The nLab's pages live in the site's database too (`supabase/content.sql`): sources, kinds, summaries, fields,
+link counts, outgoing links and alternative names. The **backend** is a set of Postgres functions the site calls
+through Supabase, plus one Edge Function:
+
+| Function | What it does |
+|---|---|
+| `get_page(name)` | a page by name or alternative name |
+| `search_pages(q, …)` | full-text search over every page's text (words, `"phrases"`, `OR`, `-word`) |
+| `hybrid_search(q, embedding, …)` | **smart search (RAG retrieval)**: meaning (pgvector embeddings) + words, fused by rank |
+| `related_pages(name)` | the pages closest in meaning |
+| `backlinks(name)`, `similar_pages(name)`, `pages_exist(names)`, `page_history(name)` | links in, “did you mean”, missing links, history |
+| `save_page(…)`, `suggest_edit(…)` | publish (new pages, sandboxes, pages started here) or suggest an edit; signed-in users only |
+| `functions/search` (Edge Function) | embeds the question with gte-small (built into Supabase) and calls `hybrid_search` |
+
+Pages load from the database first and fall back to the GitHub mirror, so the site works before (and without) it.
+
+Set up once:
+
+1. SQL Editor: run `supabase/schema.sql`, then `supabase/content.sql`, then `supabase/rag.sql`.
+2. Put the project's **secret** key in `.env.local` (git-ignored): `SUPABASE_SECRET_KEY=sb_secret_…`
+3. `npm run db:import` (all pages, ≈ 1 min) and `npm run db:embed` (embeddings on this computer, ≈ 15 min).
+4. Edge Functions → Deploy a new function → Via editor → name `search`, paste `supabase/functions/search/index.ts`,
+   deploy, and turn off “Verify JWT” for it (or `npx supabase functions deploy search --no-verify-jwt`).
+
+Re-run step 3 to pick up new nLab pages; pages edited on the site are never overwritten.
+
 ## Code layout
 
 ```
@@ -77,7 +105,7 @@ src/
     markup.js          nLab source → HTML (Markdown, itex/KaTeX, includes, theorems, TikZ)
     search-engine.js   search index, query language and ranking
     forum-data.js      forum snapshot and live nForum (Zulip) API
-    db.js              the site's database (Supabase): accounts, drafts, updates list
+    db.js              the site's database (Supabase): accounts, drafts, updates list, content, smart search
     drafts.js          drafts in the browser, synced to your account
     hash.js
   ui/            shared interface
@@ -98,7 +126,10 @@ scripts/         build-time generators (run by npm scripts)
   snapshot.mjs         forum snapshot
   seo.mjs              static article/CQTS pages, sitemap, 404 page (after vite build)
   article-meta.mjs     per-article title/summary/image (shared by seo.mjs, og-articles.mjs and the dev server)
+  db-import.mjs        loads every nLab page into the database
+  db-embed.mjs         computes page embeddings (gte-small) for smart search
   og-articles.mjs      link-preview images for the most-linked articles (needs Chrome; `npm run og`)
-supabase/        schema.sql: tables and access rules for the database
+supabase/        schema.sql (accounts, drafts, updates), content.sql (pages + backend functions),
+                 rag.sql (embeddings, smart search), functions/search (Edge Function), email/ (templates)
 public/          static files: images, brand, og/ previews, snapshot/ (generated, not committed)
 ```

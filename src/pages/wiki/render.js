@@ -5,6 +5,7 @@ import { renderSource, expandIncludes, contextSource, resolveRefs } from '../../
 import { fillPreview } from '../../ui/preview.js';
 import { $, $$ } from './shell.js';
 import { applyFocusRead } from './reading.js';
+import { dbEnabled, pagesExist } from '../../core/db.js';
 
 const getSource = async (n) => (await fetchSource(n)).source;
 
@@ -66,11 +67,17 @@ export function diagramFallback(root) {
   }, { once: true }));
 }
 
+// Links to pages that don't exist yet turn red and open the editor. A page is missing if neither the
+// nLab index nor the site's database (pages created here) has it.
 async function markMissing(root) {
+  const target = (a) => a.dataset.wiki.split('#')[0];
   const links = $$('a[data-wiki]', root);
-  await Promise.all(links.map(async (a) => {
-    if (!(await resolvePage(a.dataset.wiki.split('#')[0]))) { a.classList.add('missing'); a.title = 'This page doesn’t exist yet — click to create it'; a.href = pageUrl(a.dataset.wiki.split('#')[0], 'new'); }
-  }));
+  const missing = (await Promise.all(links.map(async (a) => ((await resolvePage(target(a))) ? null : a)))).filter(Boolean);
+  let created = new Set();
+  if (missing.length && dbEnabled) { try { created = await pagesExist([...new Set(missing.map(target))]); } catch { /* offline */ } }
+  missing.filter((a) => !created.has(target(a).toLowerCase())).forEach((a) => {
+    a.classList.add('missing'); a.title = 'This page doesn’t exist yet — click to create it'; a.href = pageUrl(target(a), 'new');
+  });
 }
 
 let spy;

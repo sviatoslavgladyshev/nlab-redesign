@@ -3,6 +3,7 @@
 import { icons } from '../../ui/app.js';
 import { esc, pageUrl, displayTitle } from '../../core/nlab.js';
 import { allTopics } from '../../core/forum-data.js';
+import { dbEnabled, smartSearch } from '../../core/db.js';
 import { $, $$, params, setHero, link, rel } from './shell.js';
 
 /* ---------------- Search ---------------- */
@@ -91,8 +92,8 @@ export async function renderSearch(q0) {
       <span class="sr-txt">
         <b>${hl(displayTitle(h.name))}</b>
         ${h.via ? `<small>also called “${hl(h.via)}”</small>` : ''}
-        ${h.summary ? `<span class="sr-sum">${hl(h.summary)}</span>` : ''}
-        <span class="sr-meta">${kl}${fl.length ? ` · ${fl.map(esc).join(', ')}` : ''}${h.inbound ? ` · ${h.inbound.toLocaleString()} page${h.inbound === 1 ? '' : 's'} link here` : ''}</span>
+        ${goodSnippet(h.snippet) ? `<span class="sr-sum sr-snip">${snippetHtml(h.snippet)}</span>` : h.summary ? `<span class="sr-sum">${hl(h.summary)}</span>` : ''}
+        <span class="sr-meta">${h.inText ? '<span class="sr-intext">Found in the text</span> · ' : h.byMeaning ? '<span class="sr-intext sr-meaning">Close in meaning</span> · ' : ''}${kl}${fl.length ? ` · ${fl.map(esc).join(', ')}` : ''}${h.inbound ? ` · ${h.inbound.toLocaleString()} page${h.inbound === 1 ? '' : 's'} link here` : ''}</span>
       </span></a></li>`;
   };
   const draw = () => {
@@ -148,6 +149,22 @@ export async function renderSearch(q0) {
     const words = qq ? mod.terms(qq) : [];
     st.disc = words.length ? topics.filter((t) => t.channel !== 'Latest Changes' && words.every((w) => mod.norm(`${t.t} ${t.excerpt || ''}`).includes(w))).slice(0, 6) : [];
     syncUrl(); header(); draw();
+    // then the database's smart search: pages close in meaning, and pages that mention the words anywhere
+    if (!dbEnabled || !qq || st.where === 'title') return;
+    try {
+      const rows = await smartSearch(toWebSearch(qq), { field: st.field, limit: 60 });
+      if (my !== seq) return;
+      const have = new Set(st.hits.map((h) => h.name.toLowerCase()));
+      const extra = rows.filter((r) => !have.has(r.name.toLowerCase())).map((r) => ({
+        name: r.name, kind: r.kind, summary: r.summary, inbound: r.inbound, fields: r.fields, aliases: [],
+        score: 40 + (r.score ?? r.rank) * 60, snippet: r.snippet, inText: r.by_words, byMeaning: r.by_meaning && !r.by_words,
+      }));
+      if (!extra.length) return;
+      st.hits = st.hits.concat(extra);
+      if (st.sort === 'linked') st.hits.sort((a, b) => b.inbound - a.inbound);
+      else if (st.sort === 'az') st.hits.sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }));
+      header(); draw();
+    } catch { /* database not set up yet: title and summary results only */ }
   };
 
   let timer;
@@ -181,4 +198,21 @@ export async function renderSearch(q0) {
   $$('.nav-search input').forEach((i) => { i.value = q0; });
   header();
   await run(q0);
+}
+
+// the site's query language → Postgres web-search syntax (words, "phrases", OR, -word)
+function toWebSearch(q) {
+  return q.replace(/\b(title|summary|kind|type|name|text):("[^"]*"|\S+)/gi, (m, f, v) => (/^(summary|text)$/i.test(f) ? v : ''))
+    .replace(/\bNOT\s+/g, '-').replace(/\bAND\b/g, ' ').replace(/[()*]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+// a database snippet: nLab markup cleaned up, matches (⟦…⟧) highlighted
+const cleanMarkup = (raw) => raw.replace(/(\+--|=--)[^\n]*/g, ' ').replace(/\bContext\s*#+[^⟦]*?(?=[A-Z][a-z]+ [a-z])/g, ' ').replace(/\\label\{?[\w:-]*\}?|label[A-Z]\w*/g, ' ').replace(/#+\s*Contents?\s*#*/gi, ' ');
+// a snippet is only worth showing if it highlights a match and isn't mostly markup
+const goodSnippet = (raw) => !!raw && raw.includes('⟦') && cleanMarkup(raw).replace(/[^A-Za-z]/g, '').length > 40;
+function snippetHtml(raw) {
+  const text = cleanMarkup(raw).replace(/\]\([^)]*\)/g, ' ').replace(/\[\[!\w+[^\]]*\]\]/g, ' ').replace(/\[\[([^\]|]*\|)?([^\]]*)\]\]/g, '$2').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/\{[:#][^}]*\}/g, ' ').replace(/(^|\s)#+\s*/g, ' ').replace(/[*_`>|]+/g, '').replace(/\$+/g, '')
+    .replace(/\\(mathbb|mathcal|mathrm|mathbf|text|operatorname)\{([^}]*)\}/g, '$2').replace(/\\[a-zA-Z]+/g, '').replace(/[{}]/g, '')
+    .replace(/\s+/g, ' ').trim();
+  return `…${esc(text).replace(/⟦/g, '<mark>').replace(/⟧/g, '</mark>')}…`;
 }

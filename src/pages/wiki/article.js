@@ -2,6 +2,7 @@
 import { icons } from '../../ui/app.js';
 import { esc, pageUrl, fetchSource, loadIndex, PageNotFound, displayTitle } from '../../core/nlab.js';
 import { drafts, draftsSynced } from '../../core/drafts.js';
+import { dbEnabled, backlinks, similarPages, relatedPages } from '../../core/db.js';
 import { $, params, setHero, btn, link, toast } from './shell.js';
 import { renderInto, renderContext, buildToc } from './render.js';
 import { focusOn, toggleReading } from './reading.js';
@@ -10,9 +11,11 @@ import { newTemplate } from './templates.js';
 // the editor (CodeMirror, KaTeX tooling…) is loaded only when someone opens it
 const openWorkspace = async (opts) => (await import('../editor/editor.js')).openWorkspace(opts);
 
-const state = { name: '', published: '', exists: true, showingDraft: false };
+const state = { name: '', published: '', exists: true, showingDraft: false, meta: null };
 const isSandbox = (name) => /^sandbox(?:\d+)?$/i.test(String(name || '').trim());
-const canDirectEdit = () => !state.exists || isSandbox(state.name);
+// new pages, sandboxes and pages started on this site are edited directly; other nLab pages take suggestions
+const canDirectEdit = () => !state.exists || isSandbox(state.name) || state.meta?.origin === 'site';
+const when = (t) => new Date(t).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
 async function showArticle(which) {
   const d = drafts.get(state.name);
@@ -25,14 +28,18 @@ async function showArticle(which) {
       <p class="lead">There is no page called “${esc(state.name)}” yet.</p>
       <p>You can start it now: write in the visual editor or in LaTeX, and publish it to the nLab when it’s ready.</p>
       <p class="mt-s">${link('Create this page', 'file-plus-2', `${pageUrl(state.name, 'new')}`, true)} ${link('Search for similar pages', 'search', `search?q=${encodeURIComponent(state.name)}`)}</p>
+      <div class="a-similar" hidden></div>
     </div>`;
     buildToc(body);
+    showSimilar(body);
   } else await renderInto(body, src);
   const words = src.replace(/\$[^$]*\$|\[\[!.*?\]\]|[#*_>`{}]/g, ' ').split(/\s+/).filter(Boolean).length;
   const idx = await loadIndex();
   const meta = useDraft
     ? `<span class="badge draft">Your draft</span> saved ${new Date(d.savedAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`
-    : state.exists ? `${words.toLocaleString()} words · from the nLab, as of ${new Date(idx.committed || Date.now()).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}` : 'New page';
+    : !state.exists ? 'New page'
+      : state.meta?.origin === 'site' ? `${words.toLocaleString()} words · edited here by <b>${esc(state.meta.updatedBy || 'a contributor')}</b>, ${when(state.meta.updatedAt)}`
+        : `${words.toLocaleString()} words · from the nLab, as of ${new Date(idx.committed || Date.now()).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}`;
   const direct = canDirectEdit();
   setHero({
     title: displayTitle(state.name, /^category:\s*people/im.test(state.published)),
@@ -47,7 +54,7 @@ async function showArticle(which) {
   if (d) {
     bar.classList.toggle('viewing-published', !useDraft);
     $('#draft-title').textContent = useDraft ? 'You are reading your unpublished draft.' : 'You have an unpublished draft of this page.';
-    $('#draft-when').textContent = `Saved ${new Date(d.savedAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}, in this browser only.`;
+    $('#draft-when').textContent = `Saved ${new Date(d.savedAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}, ${draftsSynced() ? 'to your account' : 'in this browser only'}.`;
     $('[data-act="toggle-published"] span').textContent = useDraft ? 'Show published' : 'Show my draft';
     $('[data-act="toggle-published"]').hidden = !state.exists;
   }
@@ -57,19 +64,20 @@ async function showArticle(which) {
 export async function renderArticle(requested) {
   scrollTo({ top: 0, left: 0, behavior: 'auto' });
   $('#crumb-current').textContent = requested;
-  let name = requested, source = '';
+  let name = requested, source = '', meta = null;
   try {
-    ({ name, source } = await fetchSource(requested));
+    ({ name, source, meta = null } = await fetchSource(requested));
     state.exists = true;
   } catch (e) {
     if (!(e instanceof PageNotFound)) throw e;
     state.exists = false;
   }
   if (name !== requested) history.replaceState(null, '', `${new URL(pageUrl(name), document.baseURI).pathname}${location.search}${location.hash}`);
-  Object.assign(state, { name, published: source });
+  Object.assign(state, { name, published: source, meta });
   $('#a-body').classList.add('loaded');
   if (state.exists) await renderContext(source);
   await showArticle(drafts.get(name) ? 'draft' : 'published');
+  if (state.exists) showRelated().then(showBacklinks);
 
   if (params.has('edit') || params.has('new') || params.has('suggest')) openEditor(params.has('suggest') || (params.has('edit') && !canDirectEdit()));
   else if (location.hash) document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView();
@@ -84,6 +92,8 @@ function openEditor(suggestion = !canDirectEdit()) {
     onExit: (how) => {
       const v = new URL(location.href); v.searchParams.delete('edit'); v.searchParams.delete('suggest'); history.replaceState(null, '', v);
       showArticle(drafts.get(state.name) ? 'draft' : 'published');
+      if (how === 'published-db') { toast('Published. It’s live for everyone.'); renderArticle(state.name); return; }
+      if (how === 'suggested-db') { toast('Suggestion sent. The page’s authors can now review it.'); return; }
       if (how === 'published') toast('Thanks! It may take a little while for the nLab mirror to show your change here.');
       else if (how === 'suggested') toast('Suggestion prepared. Share it in the forum so an author can review it.');
       else if (drafts.get(state.name)) toast(draftsSynced() ? 'Draft saved to your account.' : 'Draft saved in this browser.');
@@ -106,3 +116,45 @@ addEventListener('keydown', (e) => {
   if (state.name && !document.body.classList.contains('ws-open') && e.key === 'e' && !e.metaKey && !e.ctrlKey && !e.altKey
     && !/input|textarea|select/i.test(document.activeElement?.tagName) && !document.activeElement?.isContentEditable) { e.preventDefault(); openEditor(!canDirectEdit()); }
 });
+
+// "Pages that link here", from the database's link graph
+async function showBacklinks() {
+  if (!dbEnabled) return;
+  let rows = [];
+  try { rows = await backlinks(state.name, 24); } catch { return; }
+  if (!rows.length || state.showingDraft) return;
+  document.querySelector('.a-backlinks:not(.a-related)')?.remove();
+  const sec = document.createElement('section');
+  sec.className = 'a-backlinks';
+  sec.innerHTML = `<h2 class="bl-h"><i data-lucide="corner-down-right"></i>Pages that link here</h2>
+    <div class="bl-grid">${rows.map((r) => `<a href="${esc(pageUrl(r.name))}"><b>${esc(displayTitle(r.name, r.kind === 'p'))}</b>${r.summary ? `<span>${esc(r.summary.length > 120 ? `${r.summary.slice(0, 118)}…` : r.summary)}</span>` : ''}</a>`).join('')}</div>`;
+  $('#a-body').append(sec);
+  icons();
+}
+
+// a missing page: "Did you mean …?" from close titles
+async function showSimilar(body) {
+  if (!dbEnabled) return;
+  const box = body.querySelector('.a-similar');
+  try {
+    const rows = (await similarPages(state.name, 6)).filter((r) => r.similarity > 0.3);
+    if (!rows.length || !box) return;
+    box.innerHTML = `<p class="a-similar-h">Did you mean</p>${rows.map((r) => `<a href="${esc(pageUrl(r.name))}">${esc(displayTitle(r.name, r.kind === 'p'))}</a>`).join('')}`;
+    box.hidden = false;
+  } catch { /* no database: nothing to suggest */ }
+}
+
+// "Related pages": the pages closest in meaning (embeddings, supabase/rag.sql)
+async function showRelated() {
+  if (!dbEnabled) return;
+  let rows = [];
+  try { rows = await relatedPages(state.name, 8); } catch { return; }
+  if (!rows.length || state.showingDraft) return;
+  document.querySelector('.a-related')?.remove();
+  const sec = document.createElement('section');
+  sec.className = 'a-backlinks a-related';
+  sec.innerHTML = `<h2 class="bl-h"><i data-lucide="sparkles"></i>Related pages</h2>
+    <div class="bl-grid">${rows.map((r) => `<a href="${esc(pageUrl(r.name))}"><b>${esc(displayTitle(r.name, r.kind === 'p'))}</b>${r.summary ? `<span>${esc(r.summary.length > 120 ? `${r.summary.slice(0, 118)}…` : r.summary)}</span>` : ''}</a>`).join('')}</div>`;
+  $('#a-body').append(sec);
+  icons();
+}

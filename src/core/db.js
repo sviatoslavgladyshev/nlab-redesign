@@ -80,3 +80,44 @@ export async function subscribe(email, topics) {
   const { error } = await c.from('subscribers').insert({ email, topics });
   if (error && error.code !== '23505') throw error; // 23505: already subscribed, which is fine
 }
+
+/* ---------- nLab content (supabase/content.sql) ---------- */
+const rpc = async (fn, args) => {
+  const c = await db();
+  const { data, error } = await c.rpc(fn, args);
+  if (error) throw error;
+  return data;
+};
+// a page by name or alternative name; null if the database doesn't have it
+export const getPage = async (name) => (await rpc('get_page', { p_name: name }))?.[0] || null;
+// full-text search through every page's text (web-search syntax: words, "phrases", OR, -word)
+export const searchText = (q, { kind = null, field = null, limit = 30, offset = 0 } = {}) =>
+  rpc('search_pages', { q, p_kind: kind, p_field: field, p_limit: limit, p_offset: offset });
+export const backlinks = (name, limit = 60) => rpc('backlinks', { p_name: name, p_limit: limit });
+export const similarPages = (name, limit = 8) => rpc('similar_pages', { p_name: name, p_limit: limit });
+export const pageHistory = (name) => rpc('page_history', { p_name: name });
+export const pagesExist = async (names) => new Set((await rpc('pages_exist', { p_names: names })).map((n) => n.toLowerCase()));
+// publish (new pages, sandboxes, pages started here) or suggest an edit (other nLab pages)
+export const savePage = (name, source, { summary = '', links = [], note = '' } = {}) =>
+  rpc('save_page', { p_name: name, p_source: source, p_summary: summary, p_links: links, p_note: note });
+export const suggestEdit = (name, source, note = '') => rpc('suggest_edit', { p_name: name, p_source: source, p_note: note });
+
+/* ---------- smart search (supabase/rag.sql + functions/search) ---------- */
+// Meaning + words. Falls back to word-only full-text search if the search function isn't deployed.
+export async function smartSearch(q, { kind = null, field = null, limit = 40 } = {}) {
+  try {
+    const res = await fetch(`${URL_}/functions/v1/search`, {
+      method: 'POST',
+      headers: { apikey: KEY, Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ q, kind, field, limit }),
+    });
+    if (!res.ok) throw new Error(`search ${res.status}`);
+    const rows = await res.json();
+    if (!Array.isArray(rows)) throw new Error(rows?.error || 'search failed');
+    return rows;
+  } catch {
+    return (await searchText(q, { kind, field, limit })).map((r) => ({ ...r, by_words: true, by_meaning: false }));
+  }
+}
+// pages closest in meaning to this one
+export const relatedPages = (name, limit = 8) => rpc('related_pages', { p_name: name, p_limit: limit });
