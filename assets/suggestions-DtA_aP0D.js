@@ -1,0 +1,19 @@
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/editor-CEDOBQKw.js","assets/app-DKNCFJqV.js","assets/nlab-DTdF0nT3.js","assets/page-visibility-Ce-v8B-i.js","assets/app-QmmaG7bu.css","assets/markup-jhKZR-1b.js","assets/rolldown-runtime-DK3Fl9T5.js","assets/katex-DZsqLumu.js","assets/katex.min-_CCb9Gef.js","assets/katex-DIqfPlRw.css","assets/codemirror-B9ecbdZU.js","assets/wiki-BAo3cmdt.js","assets/page-loading-qMgQcCXJ.js","assets/preview-DzwL7BwL.js","assets/wiki-CU4lgzmv.css"])))=>i.map(i=>d[i]);
+import{B as e,c as t,d as n,g as r,k as i,p as a,x as o,y as s,z as c}from"./nlab-DTdF0nT3.js";import{n as l,t as u}from"./wiki-BAo3cmdt.js";import{n as d}from"./page-loading-qMgQcCXJ.js";function f(){let f=u(`#a-body`);f.classList.add(`loaded`,`is-search`),l({title:`Suggestions`,meta:`Review proposed edits to pages you authored.`}),f.innerHTML=`
+    <p role="status" id="review-status"></p>
+    <div id="review-list"></div>`;let p=u(`#review-status`),m=u(`#review-list`),h=0;async function g(l=``){let u=++h;if(m.replaceChildren(),!r())p.innerHTML=`<button type="button" class="linkish" data-acct="in">Sign in</button> to review suggestions.`;else{p.textContent=l;try{let r=await d(`Loading suggestions…`,c);if(u!==h)return;p.textContent=l||(r.length?``:`No suggestions for your pages yet.`);for(let c of r){let r=c.status===`open`,l={open:`Pending`,accepted:`Accepted`,declined:`Rejected`}[c.status],d=document.createElement(`article`);d.className=`review-card`,d.innerHTML=`
+          <div class="review-heading"><a href="${t(a(c.name))}">${t(c.name)}</a><span>${l}</span></div>
+          <p>From ${t(c.author_name||`a contributor`)} · ${new Date(c.created_at).toLocaleDateString()}${c.reviewed_at?` · reviewed ${new Date(c.reviewed_at).toLocaleDateString()}`:``}</p>
+          ${c.note?`<p>${t(c.note)}</p>`:``}
+          <details><summary>View proposed edit</summary>
+            <div class="review-sources">
+              ${r?`<div><strong>Current source</strong><pre>${t(c.current_source??``)}</pre></div>`:``}
+              <div><strong>Proposed source</strong><pre>${t(c.source)}</pre></div>
+            </div>
+            ${r?`<div class="review-actions">
+              <button type="button" class="tbtn primary" data-review="accept" ${c.stale?`disabled`:``}>Accept and publish</button>
+              <button type="button" class="tbtn" data-review="reject">Reject</button>
+            </div>`:`<button type="button" class="tbtn danger" data-review="delete">Delete suggestion</button>`}
+            ${r&&c.stale?`<p>The published page changed after this suggestion. Ask for an updated suggestion before accepting.</p>`:``}
+            <p role="status" class="review-feedback"></p>
+          </details>`,m.append(d);let f=[...d.querySelectorAll(`[data-review]`)];for(let t of f)t.addEventListener(`click`,async()=>{let r=t.dataset.review===`accept`,a=t.dataset.review===`delete`;if(!a||confirm(`Permanently delete this suggestion from the review history? The published page will stay as it is.`)){for(let e of f)e.disabled=!0;try{let t=``,l=[];if(r){let{pageSummary:n,pageLinks:r}=await e(async()=>{let{pageSummary:e,pageLinks:t}=await import(`./editor-CEDOBQKw.js`);return{pageSummary:e,pageLinks:t}},__vite__mapDeps([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14]));t=n(c.source),l=r(c.source)}a?await s(c.id):await i(c.id,r,c.current_source,t,l),r&&(n(c.name),o(c.name)),u===h&&await g(a?`Suggestion deleted.`:r?`Suggestion accepted and published.`:`Suggestion rejected.`)}catch(e){d.querySelector(`.review-feedback`).textContent=e.message||`Could not review this suggestion.`;for(let e of f)e.disabled=c.stale&&e.dataset.review===`accept`}}})}}catch(e){u===h&&(p.textContent=e.message||`Could not load suggestions.`)}}}addEventListener(`account-change`,()=>g()),g()}export{f as showSuggestions};

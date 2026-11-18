@@ -1,0 +1,1 @@
+var e=`/nlab-redesign/assets/bibtex_parser_bg-BRjhuwWB.wasm`;export{e as default};

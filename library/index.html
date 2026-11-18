@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="prism">
+<head>
+<base href="/nlab-redesign/">
+<meta charset="utf-8">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Cpath d=%22M16 3c5 6 5 14 0 26C11 17 11 9 16 3z%22 fill=%22%23193c78%22/%3E%3Cpath d=%22M4 12c7-1 13 3 12 17C9 25 4 19 4 12z%22 fill=%22%23226622%22/%3E%3Cpath d=%22M28 12c-7-1-13 3-12 17 7-4 12-10 12-17z%22 fill=%22%23a41e32%22/%3E%3C/svg%3E">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>(function(){var m=null;try{m=localStorage.getItem('nlab-mode')}catch(e){}if(m!=='dark'&&m!=='light')m=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.dataset.mode=m})();</script>
+<style>.brand-mark{width:28px;height:28px}</style>
+<script type="speculationrules">{"prerender":[{"where":{"selector_matches":".nav-links a, .nav-write, .hero-choices a, .h-field, .cq-tile, .tabs a"},"eagerness":"moderate"}],"prefetch":[{"where":{"href_matches":"/*"},"eagerness":"moderate"}]}</script>
+  <script type="module" crossorigin src="/nlab-redesign/assets/library-BSrKnQt6.js"></script>
+  <link rel="modulepreload" crossorigin href="/nlab-redesign/assets/page-visibility-Ce-v8B-i.js">
+  <link rel="modulepreload" crossorigin href="/nlab-redesign/assets/nlab-DTdF0nT3.js">
+  <link rel="modulepreload" crossorigin href="/nlab-redesign/assets/app-DKNCFJqV.js">
+  <link rel="modulepreload" crossorigin href="/nlab-redesign/assets/page-loading-qMgQcCXJ.js">
+  <link rel="modulepreload" crossorigin href="/nlab-redesign/assets/rolldown-runtime-DK3Fl9T5.js">
+  <link rel="modulepreload" crossorigin href="/nlab-redesign/assets/katex.min-_CCb9Gef.js">
+  <link rel="modulepreload" crossorigin href="/nlab-redesign/assets/katex-DZsqLumu.js">
+  <link rel="modulepreload" crossorigin href="/nlab-redesign/assets/markup-jhKZR-1b.js">
+  <link rel="modulepreload" crossorigin href="/nlab-redesign/assets/preview-DzwL7BwL.js">
+  <link rel="stylesheet" crossorigin href="/nlab-redesign/assets/app-QmmaG7bu.css">
+  <link rel="stylesheet" crossorigin href="/nlab-redesign/assets/katex-DIqfPlRw.css">
+  <link rel="stylesheet" crossorigin href="/nlab-redesign/assets/library-D9mzRqm8.css">
+<title>Library — every nLab page by field, kind and author</title>
+<meta name="description" content="Browse all 20,000+ pages of the nLab: concepts, theorems, people and references, filtered by field (category theory, homotopy theory, geometry, physics…) and sorted by how often they are cited.">
+<link rel="canonical" href="https://sviatoslavgladyshev.github.io/nlab-redesign/library/">
+<meta name="theme-color" content="#1d4f91">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="nLab">
+<meta property="og:title" content="Library — every nLab page by field, kind and author">
+<meta property="og:description" content="Browse all 20,000+ pages of the nLab: concepts, theorems, people and references, filtered by field (category theory, homotopy theory, geometry, physics…) and sorted by how often they are cited.">
+<meta property="og:url" content="https://sviatoslavgladyshev.github.io/nlab-redesign/library/">
+<meta property="og:image" content="https://sviatoslavgladyshev.github.io/nlab-redesign/og/library.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Library — every nLab page by field, kind and author">
+<meta name="twitter:description" content="Browse all 20,000+ pages of the nLab: concepts, theorems, people and references, filtered by field (category theory, homotopy theory, geometry, physics…) and sorted by how often they are cited.">
+<meta name="twitter:image" content="https://sviatoslavgladyshev.github.io/nlab-redesign/og/library.png">
+</head>
+<body id="top" class="library-page">
+<div class="progress"></div>
+
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="./" aria-label="nLab home">
+      <svg class="brand-mark" width="28" height="28" viewBox="0 0 32 32" aria-hidden="true">
+        <path d="M16 3c5 6 5 14 0 26C11 17 11 9 16 3z" fill="#193c78"/>
+        <path d="M4 12c7-1 13 3 12 17C9 25 4 19 4 12z" fill="#226622"/>
+        <path d="M28 12c-7-1-13 3-12 17 7-4 12-10 12-17z" fill="#a41e32"/>
+      </svg>
+      nLab
+    </a>
+    <nav class="nav-links" aria-label="Main">
+      <a href="library/"><i data-lucide="library"></i><span>Library</span></a>
+      <a href="forum/"><i data-lucide="messages-square"></i><span>Forum</span></a>
+      <a href="cqts/"><span class="nav-cqts" aria-hidden="true"></span><span>CQTS</span></a>
+    </nav>
+    <form class="nav-search" role="search">
+      <i data-lucide="search"></i>
+      <input type="search" placeholder="Search" aria-label="Search the nLab">
+      <kbd>/</kbd>
+    </form>
+    <a class="nav-write" href="write"><i data-lucide="pen-line"></i><span>Write</span></a>
+    <button class="nav-mode" type="button" aria-label="Switch between light and dark" title="Light / dark"><i data-lucide="moon"></i></button>
+    <div class="nav-account"></div>
+  </div>
+</header>
+
+<section class="lib-head">
+  <div class="wrap">
+    <nav class="crumbs" aria-label="Breadcrumb"><a href="./">nLab</a><span>/</span><span>Library</span></nav>
+    <div class="lib-head-row">
+      <div>
+        <h1 class="title">Library</h1>
+        <p class="lib-sub">Every page of the nLab, organised by field, kind and author. Filter, sort, and open anything.</p>
+      </div>
+      <label class="lib-search"><i data-lucide="search"></i><input id="lib-q" type="search" placeholder="Filter by name" aria-label="Filter pages by name" autocomplete="off"></label>
+    </div>
+    <div class="lib-kinds" id="lib-kinds" role="tablist" aria-label="Kind of page"></div>
+  </div>
+</section>
+
+<div class="wrap lib-layout">
+  <aside class="lib-side" aria-label="Fields">
+    <p class="lib-label">Fields</p>
+    <nav id="lib-fields"></nav>
+  </aside>
+  <main class="lib-main">
+    <div class="lib-bar">
+      <p id="lib-count" aria-live="polite"></p>
+      <div class="lib-chips" id="lib-chips"></div>
+      <div class="lib-sort" role="group" aria-label="Sort">
+        <button type="button" data-sort="linked" aria-pressed="true"><i data-lucide="network"></i><span>Most linked</span></button>
+        <button type="button" data-sort="az" aria-pressed="false"><i data-lucide="list-ordered"></i><span>A–Z</span></button>
+      </div>
+    </div>
+    <nav class="lib-az" id="lib-az" hidden aria-label="Jump to letter"></nav>
+    <div class="lib-grid" id="lib-grid"></div>
+    <div class="lib-more"><button type="button" class="tbtn" id="lib-more" hidden><span>Show more</span></button></div>
+  </main>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="foot-cols">
+      <div class="foot-about">
+        <a class="brand" href="./"><svg class="brand-mark" width="28" height="28" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3c5 6 5 14 0 26C11 17 11 9 16 3z" fill="#6b8fd6"/><path d="M4 12c7-1 13 3 12 17C9 25 4 19 4 12z" fill="#5fae5f"/><path d="M28 12c-7-1-13 3-12 17 7-4 12-10 12-17z" fill="#e0606f"/></svg>nLab</a>
+        <p>The open wiki for mathematics and physics. Read it, improve it.</p>
+      </div>
+      <div><h6>Read</h6><a href="wiki/mathematics/">Mathematics</a><a href="wiki/physics/">Physics</a><a href="all">All pages</a></div>
+      <div><h6>Contribute</h6><a href="./#contribute">How to contribute</a><a href="wiki/HowTo/">HowTo</a><a href="write">Write a page</a><a href="library/?kind=s">Sandbox</a></div>
+      <div><h6>Community</h6><a href="forum/">Forum</a><a href="recent">Recent changes</a><a href="forum/?new">Start a discussion</a></div>
+      <div><h6>CQTS</h6><a href="cqts/">Overview</a><a href="cqts/#Symposium2026">Symposium 2026</a><a href="cqts/#colloquium">Colloquium</a></div>
+    </div>
+    <div class="foot-base"><span id="foot-source">Content from the nLab (via its public content mirror) and the nForum.</span><span>Redesign prototype — not the official nLab.</span></div>
+  </div>
+</footer>
+
+</body>
+</html>

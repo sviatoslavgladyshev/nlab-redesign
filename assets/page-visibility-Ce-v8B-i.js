@@ -1,0 +1,1 @@
+var e=new Set([`test`]),t=t=>e.has(String(t??``).trim().toLowerCase());export{t};

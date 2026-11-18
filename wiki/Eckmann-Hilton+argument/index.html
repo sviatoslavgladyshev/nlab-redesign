@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="prism">
+<head>
+<base href="/nlab-redesign/">
+<meta charset="utf-8">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Cpath d=%22M16 3c5 6 5 14 0 26C11 17 11 9 16 3z%22 fill=%22%23193c78%22/%3E%3Cpath d=%22M4 12c7-1 13 3 12 17C9 25 4 19 4 12z%22 fill=%22%23226622%22/%3E%3Cpath d=%22M28 12c-7-1-13 3-12 17 7-4 12-10 12-17z%22 fill=%22%23a41e32%22/%3E%3C/svg%3E">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>(function(){var m=null;try{m=localStorage.getItem('nlab-mode')}catch(e){}if(m!=='dark'&&m!=='light')m=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.dataset.mode=m})();</script>
+<style>.brand-mark{width:28px;height:28px}</style>
+<script type="speculationrules">{"prerender":[{"where":{"selector_matches":".nav-links a, .nav-write, .hero-choices a, .h-field, .cq-tile, .tabs a"},"eagerness":"moderate"}],"prefetch":[{"where":{"href_matches":"/*"},"eagerness":"moderate"}]}</script>
+  <script type="module" crossorigin src="/nlab-redesign/assets/wiki-BAo3cmdt.js"></script>
+  <link rel="modulepreload" crossorigin href="/nlab-redesign/assets/page-visibility-Ce-v8B-i.js">
+  <link rel="modulepreload" crossorigin href="/nlab-redesign/assets/nlab-DTdF0nT3.js">
+  <link rel="modulepreload" crossorigin href="/nlab-redesign/assets/app-DKNCFJqV.js">
+  <link rel="modulepreload" crossorigin href="/nlab-redesign/assets/page-loading-qMgQcCXJ.js">
+  <link rel="modulepreload" crossorigin href="/nlab-redesign/assets/rolldown-runtime-DK3Fl9T5.js">
+  <link rel="modulepreload" crossorigin href="/nlab-redesign/assets/katex-DZsqLumu.js">
+  <link rel="modulepreload" crossorigin href="/nlab-redesign/assets/katex.min-_CCb9Gef.js">
+  <link rel="modulepreload" crossorigin href="/nlab-redesign/assets/markup-jhKZR-1b.js">
+  <link rel="modulepreload" crossorigin href="/nlab-redesign/assets/preview-DzwL7BwL.js">
+  <link rel="stylesheet" crossorigin href="/nlab-redesign/assets/app-QmmaG7bu.css">
+  <link rel="stylesheet" crossorigin href="/nlab-redesign/assets/katex-DIqfPlRw.css">
+  <link rel="stylesheet" crossorigin href="/nlab-redesign/assets/wiki-CU4lgzmv.css">
+<title>Eckmann-Hilton Argument — nLab</title>
+<meta name="description" content="In its original form, the Eckmann–Hilton argument shows that a monoid object or group object internal to the category of monoids or of groups is necessarily commutative/abelian.">
+<link rel="canonical" href="https://sviatoslavgladyshev.github.io/nlab-redesign/wiki/Eckmann-Hilton+argument/">
+<meta name="theme-color" content="#1d4f91">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="nLab">
+<meta property="og:title" content="Eckmann-Hilton Argument — nLab">
+<meta property="og:description" content="In its original form, the Eckmann–Hilton argument shows that a monoid object or group object internal to the category of monoids or of groups is necessarily commutative/abelian.">
+<meta property="og:url" content="https://sviatoslavgladyshev.github.io/nlab-redesign/wiki/Eckmann-Hilton+argument/">
+<meta property="og:image" content="https://sviatoslavgladyshev.github.io/nlab-redesign/og/article.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Eckmann-Hilton Argument — nLab">
+<meta name="twitter:description" content="In its original form, the Eckmann–Hilton argument shows that a monoid object or group object internal to the category of monoids or of groups is necessarily commutative/abelian.">
+<meta name="twitter:image" content="https://sviatoslavgladyshev.github.io/nlab-redesign/og/article.png">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"Eckmann-Hilton Argument","name":"Eckmann-Hilton Argument","url":"https://sviatoslavgladyshev.github.io/nlab-redesign/wiki/Eckmann-Hilton+argument/","description":"In its original form, the Eckmann–Hilton argument shows that a monoid object or group object internal to the category of monoids or of groups is necessarily commutative/abelian.","image":"https://sviatoslavgladyshev.github.io/nlab-redesign/og/article.png","about":["Category theory"],"inLanguage":"en","isPartOf":{"@type":"WebSite","name":"nLab","url":"https://sviatoslavgladyshev.github.io/nlab-redesign/"}}</script>
+</head>
+<body id="top" class="article-page">
+<div class="progress"></div>
+
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="./" aria-label="nLab home">
+      <svg class="brand-mark" width="28" height="28" viewBox="0 0 32 32" aria-hidden="true">
+        <path d="M16 3c5 6 5 14 0 26C11 17 11 9 16 3z" fill="#193c78"/>
+        <path d="M4 12c7-1 13 3 12 17C9 25 4 19 4 12z" fill="#226622"/>
+        <path d="M28 12c-7-1-13 3-12 17 7-4 12-10 12-17z" fill="#a41e32"/>
+      </svg>
+      nLab
+    </a>
+    <nav class="nav-links" aria-label="Main">
+      <a href="library/"><i data-lucide="library"></i><span>Library</span></a>
+      <a href="forum/"><i data-lucide="messages-square"></i><span>Forum</span></a>
+      <a href="cqts/"><span class="nav-cqts" aria-hidden="true"></span><span>CQTS</span></a>
+    </nav>
+    <form class="nav-search" role="search">
+      <i data-lucide="search"></i>
+      <input type="search" placeholder="Search" aria-label="Search the nLab">
+      <kbd>/</kbd>
+    </form>
+    <a class="nav-write" href="write"><i data-lucide="pen-line"></i><span>Write</span></a>
+    <button class="nav-mode" type="button" aria-label="Switch between light and dark" title="Light / dark"><i data-lucide="moon"></i></button>
+    <div class="nav-account"></div>
+  </div>
+</header>
+
+<!-- Article header -->
+<section class="a-hero" hidden>
+  <div class="wrap a-hero-inner">
+    <nav class="crumbs" aria-label="Breadcrumb"><a href="./">nLab</a><span>/</span><span id="crumb-current">…</span></nav>
+    <h1 class="title" id="a-title"></h1>
+    <p class="a-meta" id="a-meta" hidden></p>
+    <div class="a-actions" id="a-actions"></div>
+  </div>
+</section>
+
+<!-- Shown when this browser holds an unpublished draft of the page -->
+<div class="draft-bar" id="draft-bar" hidden>
+  <div class="wrap draft-inner">
+    <i data-lucide="pencil"></i>
+    <p><b id="draft-title">You have an unpublished draft of this page.</b> <span id="draft-when"></span></p>
+    <div class="draft-actions">
+      <button type="button" class="tbtn" data-act="toggle-published"><i data-lucide="eye"></i><span>Show published</span></button>
+      <a class="tbtn" id="draft-copy" hidden><i data-lucide="file-plus-2"></i>Copy to a new title</a>
+      <button type="button" class="tbtn primary" data-act="resume-draft"><i data-lucide="pencil"></i><span>Continue editing</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= Editing workspace ================= -->
+<div class="ws" id="ws" hidden data-mode="visual">
+  <header class="ws-bar">
+    <div class="ws-left">
+      <button class="ws-icon" type="button" data-ws="close" title="Back to your drafts and publications" aria-label="Back to your drafts and publications"><i data-lucide="arrow-left"></i></button>
+      <div class="ws-title">
+        <span class="ws-kicker">Editing <em id="ws-new" hidden>· new page</em></span>
+        <b id="ws-name">Page</b>
+      </div>
+      <span class="ws-save" id="ws-save" aria-live="polite"></span>
+    </div>
+    <div class="ws-modes" role="tablist" aria-label="How to write">
+      <button type="button" role="tab" data-ws="mode" data-mode="visual" aria-selected="true" title="Type into the page as normal text"><i data-lucide="type"></i><span>Visual</span></button>
+      <button type="button" role="tab" data-ws="mode" data-mode="latex" aria-selected="false" title="Edit the LaTeX / Markdown source with suggestions"><i data-lucide="file-code"></i><span>LaTeX</span></button>
+    </div>
+    <div class="ws-right">
+      <button type="button" class="tbtn" data-ws="changes" aria-pressed="false"><i data-lucide="git-compare"></i><span>Changes</span><em id="ws-count"></em></button>
+      <button type="button" class="tbtn primary" data-ws="publish"><i data-lucide="cloud-upload"></i><span>Publish</span></button>
+    </div>
+  </header>
+
+  <div class="ws-tools" id="ws-tools" role="toolbar" aria-label="Formatting">
+    <div class="tg">
+      <button type="button" data-cmd="undo" title="Undo (⌘Z)"><i data-lucide="undo-2"></i></button>
+      <button type="button" data-cmd="redo" title="Redo (⇧⌘Z)"><i data-lucide="redo-2"></i></button>
+    </div>
+    <div class="tg vis-only">
+      <button type="button" class="menu-btn" data-menu="block" aria-haspopup="menu" title="Paragraph style"><span id="ws-block-label">Paragraph</span><i data-lucide="chevron-down"></i></button>
+      <button type="button" class="menu-btn" data-menu="align" aria-haspopup="menu" aria-label="Text alignment"><i data-lucide="align-left"></i><i data-lucide="chevron-down"></i></button>
+    </div>
+    <div class="tg tex-only">
+      <button type="button" data-cmd="heading" title="Section heading (##)"><i data-lucide="heading-2"></i></button>
+    </div>
+    <div class="tg">
+      <button type="button" data-cmd="bold" title="Bold (⌘B)"><i data-lucide="bold"></i></button>
+      <button type="button" data-cmd="italic" title="Italic (⌘I)"><i data-lucide="italic"></i></button>
+      <button type="button" data-cmd="code" title="Code"><i data-lucide="code"></i></button>
+      <button type="button" data-cmd="link" title="Link to an nLab page (⌘K)"><i data-lucide="link"></i></button>
+    </div>
+    <div class="tg">
+      <button type="button" data-cmd="list" title="Bulleted list"><i data-lucide="list"></i></button>
+      <button type="button" data-cmd="olist" title="Numbered list"><i data-lucide="list-ordered"></i></button>
+      <button type="button" data-cmd="quote" title="Quotation"><i data-lucide="text-quote"></i></button>
+    </div>
+    <div class="tg">
+      <button type="button" class="wide" data-cmd="math" title="Inline formula (⌘M)"><i data-lucide="radical"></i><span>Formula</span></button>
+      <button type="button" class="wide" data-cmd="display" title="Displayed equation"><i data-lucide="square-function"></i><span>Equation</span></button>
+      <button type="button" data-cmd="symbols" title="Symbols"><i data-lucide="omega"></i></button>
+    </div>
+    <div class="tg">
+      <button type="button" class="menu-btn" data-menu="env" aria-haspopup="menu" title="Insert a theorem-like environment"><i data-lucide="plus"></i><span>Environment</span><i data-lucide="chevron-down"></i></button>
+      <button type="button" class="menu-btn" data-menu="break" aria-haspopup="menu" aria-label="Insert break"><span>Break</span><i data-lucide="chevron-down"></i></button>
+      <button type="button" class="menu-btn" data-menu="insert" aria-haspopup="menu"><i data-lucide="plus"></i><span>Insert</span><i data-lucide="chevron-down"></i></button>
+      <button type="button" class="wide" data-ws="bibliography" aria-haspopup="dialog"><i data-lucide="book-open"></i><span>Bibliography</span></button>
+    </div>
+    <span class="tg-spacer"></span>
+    <button type="button" class="menu-btn ws-zoom-btn" data-menu="zoom" aria-haspopup="menu" aria-label="Paper zoom"><i data-lucide="zoom-in"></i><span id="ws-zoom-label">Fit width</span><i data-lucide="chevron-down"></i></button>
+    <select id="ws-zoom" aria-label="Paper zoom" hidden tabindex="-1">
+      <option value="width">Fit width</option>
+      <option value="page">Fit page</option>
+      <option value=".5">50%</option>
+      <option value=".75">75%</option>
+      <option value="1">100%</option>
+      <option value="1.25">125%</option>
+      <option value="1.5">150%</option>
+      <option value="2">200%</option>
+    </select>
+    <button type="button" class="ws-help-btn" data-ws="help" title="How editing works"><i data-lucide="circle-help"></i></button>
+  </div>
+
+  <div class="ws-main">
+    <aside class="ws-outline" aria-label="Outline">
+      <p class="ws-label">Outline</p>
+      <nav id="ws-outline"></nav>
+    </aside>
+
+    <div class="ws-stage">
+      <div class="ws-help" id="ws-help" hidden>
+        <div><b>Visual</b> — click anywhere and type. Start a line with <kbd>## </kbd> for a section, <kbd>* </kbd> for a list. Type <kbd>$\pi_1(X)$</kbd> and it turns into a formula; <kbd>[[topos]]</kbd> becomes a link. Theorems, equations and tables are cards: click one to edit its LaTeX.</div>
+        <div><b>LaTeX</b> — the page source as stored on the nLab (Markdown + LaTeX). Suggestions appear as you type <kbd>\</kbd>, <kbd>[[</kbd> or <kbd>\begin{</kbd>; <kbd>Tab</kbd>/<kbd>Enter</kbd> accepts.</div>
+        <div><b>Saving</b> — drafts save automatically in this browser. <b>Publish</b> sends the page to the nLab.</div>
+      </div>
+      <section class="ws-visual" id="ws-visual">
+        <article class="ws-paper"><div id="ws-visual-doc"></div></article>
+      </section>
+      <section class="ws-latex" id="ws-latex" hidden>
+        <div class="ws-src" id="ws-cm"></div>
+        <div class="ws-prev-wrap">
+          <div class="pdf-bar"><span class="ws-label">PDF preview</span><span class="pdf-count" id="pdf-count"></span>
+            <button type="button" class="tbtn sm" data-ws="titlepage" title="Set the title, author and date (\title, \author, \date)"><i data-lucide="type"></i><span>Title page</span></button>
+            <button type="button" class="tbtn sm" data-ws="pdf"><i data-lucide="file-text"></i><span>Download PDF</span></button></div>
+          <div class="ws-prev" id="ws-prev"></div>
+        </div>
+      </section>
+    </div>
+
+    <aside class="ws-drawer" id="ws-drawer" hidden aria-label="Changes">
+      <header><b>Changes</b><button type="button" class="ws-icon" data-ws="changes" aria-label="Close"><i data-lucide="x"></i></button></header>
+      <p id="ws-diff-sum"></p>
+      <div class="ws-diff" id="ws-diff"></div>
+      <button type="button" class="tbtn danger" data-ws="discard"><i data-lucide="trash-2"></i><span>Discard all changes</span></button>
+    </aside>
+  </div>
+
+  <footer class="ws-status"><span id="ws-words"></span><span id="ws-hint"></span></footer>
+</div>
+
+<dialog class="modal" id="pub-dlg" aria-labelledby="pub-title">
+  <form method="dialog">
+    <h2 id="pub-title">Publish to the nLab</h2>
+    <p class="pub-sum" id="pub-sum"></p>
+    <div class="pub-db" id="pub-db" hidden>
+      <p id="pub-db-intro"></p>
+      <label class="pub-note">What did you change? <span>(optional)</span><input id="pub-note" type="text" maxlength="300" placeholder="e.g. added an example and fixed a typo" autocomplete="off"></label>
+      <p class="si-err" id="pub-err" role="alert"></p>
+    </div>
+    <details class="pub-nlab" id="pub-nlab">
+    <summary id="pub-nlab-sum">Also send it to ncatlab.org</summary>
+    <p id="pub-intro">The nLab stores every page on ncatlab.org. Publishing takes three short steps:</p>
+    <ol class="pub-steps">
+      <li><b>Copy your page source.</b><button type="button" class="tbtn" id="pub-copy"><i data-lucide="copy"></i><span>Copy page source</span></button></li>
+      <li><b id="pub-step-paste">Paste it into the nLab editor and press “Submit”.</b><a class="tbtn" id="pub-open" target="_blank" rel="noopener"><i data-lucide="external-link"></i><span>Open the nLab editor</span></a></li>
+      <li><b id="pub-step-forum">For anything beyond a typo, say what you changed in the forum.</b><a class="tbtn" id="pub-forum"><i data-lucide="messages-square"></i><span>Start a forum topic</span></a></li>
+    </ol>
+    </details>
+    <div class="modal-actions">
+      <button class="tbtn" value="cancel">Not yet</button>
+      <button class="tbtn primary" type="button" id="pub-done"><i data-lucide="check"></i><span>I’ve published it</span></button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Article body -->
+<div class="wrap a-layout" id="a-layout">
+  <aside class="a-side" id="a-side" hidden>
+    <div class="a-side-inner">
+      <div class="side-tabs" role="tablist">
+        <button role="tab" aria-selected="true" data-tab="toc">Contents</button>
+        <button role="tab" aria-selected="false" data-tab="ctx" id="ctx-tab" hidden>Context</button>
+      </div>
+      <nav class="a-toc" id="a-toc" data-panel="toc"></nav>
+      <div class="a-ctx" id="a-ctx" data-panel="ctx" hidden></div>
+    </div>
+  </aside>
+  <article class="a-body" id="a-body"></article>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="foot-cols">
+      <div class="foot-about">
+        <a class="brand" href="./"><svg class="brand-mark" width="28" height="28" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3c5 6 5 14 0 26C11 17 11 9 16 3z" fill="#6b8fd6"/><path d="M4 12c7-1 13 3 12 17C9 25 4 19 4 12z" fill="#5fae5f"/><path d="M28 12c-7-1-13 3-12 17 7-4 12-10 12-17z" fill="#e0606f"/></svg>nLab</a>
+        <p>The open wiki for mathematics and physics. Read it, improve it.</p>
+      </div>
+      <div><h6>Read</h6><a href="wiki/mathematics/">Mathematics</a><a href="wiki/physics/">Physics</a><a href="all">All pages</a></div>
+      <div><h6>Contribute</h6><a href="./#contribute">How to contribute</a><a href="wiki/HowTo/">HowTo</a><a href="write">Write a page</a><a href="library/?kind=s">Sandbox</a></div>
+      <div><h6>Community</h6><a href="forum/">Forum</a><a href="recent">Recent changes</a><a href="forum/?new">Start a discussion</a></div>
+      <div><h6>CQTS</h6><a href="cqts/">Overview</a><a href="cqts/#Symposium2026">Symposium 2026</a><a href="cqts/#colloquium">Colloquium</a></div>
+    </div>
+    <div class="foot-base"><span id="foot-source">Content from the nLab (via its public content mirror) and the nForum.</span><span>Redesign prototype — not the official nLab.</span></div>
+  </div>
+</footer>
+
+</body>
+</html>

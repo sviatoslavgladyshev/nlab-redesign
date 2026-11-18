@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="173.399pt" height="17.58pt" viewBox="0 0 173.399 17.58" version="1.2">
+<defs>
+<g>
+<symbol overflow="visible" id="Ok33LYfdEYC5lIlAtQ4Zlm5Tto0=-glyph0-0">
+<path style="stroke:none;" d=""></path>
+</symbol>
+<symbol overflow="visible" id="Ok33LYfdEYC5lIlAtQ4Zlm5Tto0=-glyph0-1">
+<path style="stroke:none;" d="M 6.484375 -3.65625 C 6.484375 -5.203125 5.1875 -6.484375 3.65625 -6.484375 C 2.078125 -6.484375 0.796875 -5.1875 0.796875 -3.65625 C 0.796875 -2.09375 2.078125 -0.8125 3.65625 -0.8125 C 5.1875 -0.8125 6.484375 -2.09375 6.484375 -3.65625 Z M 6.484375 -3.65625 "></path>
+</symbol>
+</g>
+</defs>
+<g id="Ok33LYfdEYC5lIlAtQ4Zlm5Tto0=-surface1">
+<g style="fill:rgb(0%,0%,0%);fill-opacity:1;">
+  <use xlink:href="#Ok33LYfdEYC5lIlAtQ4Zlm5Tto0=-glyph0-1" x="8.013373" y="11.82841"></use>
+</g>
+<g style="fill:rgb(0%,0%,0%);fill-opacity:1;">
+  <use xlink:href="#Ok33LYfdEYC5lIlAtQ4Zlm5Tto0=-glyph0-1" x="82.756697" y="11.82841"></use>
+</g>
+<g style="fill:rgb(0%,0%,0%);fill-opacity:1;">
+  <use xlink:href="#Ok33LYfdEYC5lIlAtQ4Zlm5Tto0=-glyph0-1" x="157.50002" y="11.82841"></use>
+</g>
+<path style="fill:none;stroke-width:0.47818;stroke-linecap:butt;stroke-linejoin:miter;stroke:rgb(0%,0%,0%);stroke-opacity:1;stroke-miterlimit:10;" d="M -66.112204 0.414893 L -10.898093 0.414893 " transform="matrix(0.976667,0,0,-0.976667,86.405523,8.5849)"></path>
+<path style="fill:none;stroke-width:0.47818;stroke-linecap:round;stroke-linejoin:round;stroke:rgb(0%,0%,0%);stroke-opacity:1;stroke-miterlimit:10;" d="M -2.487374 2.867487 C -2.031422 1.147671 -1.01953 0.335758 0.000360973 -0.000206655 C -1.01953 -0.336171 -2.031422 -1.148084 -2.487374 -2.867901 " transform="matrix(0.976667,0,0,-0.976667,75.995741,8.179486)"></path>
+<path style="fill:none;stroke-width:0.47818;stroke-linecap:butt;stroke-linejoin:miter;stroke:rgb(0%,0%,0%);stroke-opacity:1;stroke-miterlimit:10;" d="M 10.419633 0.414893 L 65.633743 0.414893 " transform="matrix(0.976667,0,0,-0.976667,86.405523,8.5849)"></path>
+<path style="fill:none;stroke-width:0.47818;stroke-linecap:round;stroke-linejoin:round;stroke:rgb(0%,0%,0%);stroke-opacity:1;stroke-miterlimit:10;" d="M -2.485627 2.867487 C -2.033675 1.147671 -1.021783 0.335758 -0.001892 -0.000206655 C -1.021783 -0.336171 -2.033675 -1.148084 -2.485627 -2.867901 " transform="matrix(0.976667,0,0,-0.976667,150.740129,8.179486)"></path>
+</g>
+</svg>
