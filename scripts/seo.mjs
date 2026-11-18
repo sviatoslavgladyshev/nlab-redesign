@@ -10,7 +10,8 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { SITE, seoTags } from '../vite.config.js';
+import { SITE, seoTags, articleJsonld } from '../vite.config.js';
+import { articleMeta } from './article-meta.mjs';
 
 const mirror = process.argv[2] || join(tmpdir(), 'nlab-content');
 const LIMIT = +(process.argv[3] || 3000);
@@ -51,7 +52,7 @@ function describe(src, title) {
     .replace(/\$\$?([^$]*)\$\$?/g, (_, m) => m.replace(/\\[a-zA-Z]+/g, ' ').replace(/[{}^_\\]/g, '')).replace(/[*_`>]/g, '')
     .replace(/\{#[^}]*\}/g, '').replace(/\s+/g, ' ').trim();
   if (text.length > 158) text = `${text.slice(0, 155).replace(/\s+\S*$/, '')}…`;
-  return text || `${title} on the nLab, the open wiki for mathematics, physics and philosophy.`;
+  return text || `${title} on the nLab, the open wiki for mathematics and physics.`;
 }
 
 const shell = await read('wiki/index.html');
@@ -69,13 +70,10 @@ for (const [name, kind] of ranked.filter(Boolean)) {
   taken.add(name.toLowerCase());
   const folder = name.replace(/ /g, '+');
   const src = existsSync(join(mirror, 'pages', dirOf.get(name) || '', 'content.md')) ? await readFile(join(mirror, 'pages', dirOf.get(name), 'content.md'), 'utf8') : '';
-  const title = displayTitle(name, kind === 'p');
-  const description = describe(src, title);
+  const m = articleMeta(name);
+  if (!m.known) m.description = describe(src, m.title);
   const url = `${SITE}wiki/${encodeURIComponent(name).replace(/%20/g, '+')}/`;
-  const jsonld = kind === 'p'
-    ? { '@context': 'https://schema.org', '@type': 'ProfilePage', name: `${title} — nLab`, url, description, mainEntity: { '@type': 'Person', name: title } }
-    : { '@context': 'https://schema.org', '@type': 'Article', headline: title, name: title, url, description, inLanguage: 'en', isPartOf: { '@type': 'WebSite', name: 'nLab', url: SITE } };
-  await write(`wiki/${folder}/index.html`, withSeo(shell, seoTags({ title: `${title} — nLab`, description, url, image: 'og/article.png', type: 'article', jsonld })));
+  await write(`wiki/${folder}/index.html`, withSeo(shell, seoTags({ title: `${m.title} — nLab`, description: m.description, url, image: m.image, type: 'article', jsonld: articleJsonld(m) })));
   urls.push(url);
   made += 1;
 }

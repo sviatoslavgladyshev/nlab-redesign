@@ -12,7 +12,7 @@ const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 
 const KINDS = [
   ['all', 'All pages', 'library'], ['c', 'Concepts', 'sigma'], ['t', 'Theorems & results', 'radical'],
-  ['p', 'People', 'users'], ['r', 'References', 'book-open'],
+  ['p', 'People', 'users'], ['r', 'References', 'book-open'], ['s', 'Sandbox', 'flask-conical'],
 ];
 const FIELD_ICONS = ['network', 'sigma', 'orbit', 'globe', 'history', 'library', 'scroll-text', 'atom', 'presentation', 'atom', 'hash', 'lightbulb'];
 const PAGE = 48;
@@ -46,7 +46,7 @@ const letterOf = (n) => { const c = n[0].toUpperCase(); return /[A-Z]/.test(c) ?
 /* ---------- filtering ---------- */
 const fieldsOf = (p) => [...new Set(p.subs.map((s) => LIB.subs[s][1]))];
 function matches(p, { kind = state.kind, field = state.field, sub = state.sub, q = state.q } = {}) {
-  if (kind !== 'all' && p.kind !== kind) return false;
+  if (kind === 'all' ? p.kind === 's' : p.kind !== kind) return false; // sandboxes only in their own section
   if (sub != null && !p.subs.includes(sub)) return false;
   if (field === -2 && p.subs.length) return false; // "Unsorted"
   if (field != null && field >= 0 && !p.fields.includes(field)) return false;
@@ -103,8 +103,9 @@ function render() {
 
   const grid = $('#lib-grid');
   const items = list.slice(0, state.shown);
-  grid.innerHTML = items.length ? items.map(card).join('') : `<div class="lib-empty"><p>No pages match these filters.</p>
-    ${state.q ? `<a class="tbtn primary" href="${esc(pageUrl(state.q, 'new'))}"><i data-lucide="file-plus-2"></i><span>Write a page “${esc(state.q)}”</span></a>` : ''}</div>`;
+  const intro = state.kind === 's' ? `<div class="lib-sandbox"><span class="lsb-ic"><i data-lucide="flask-conical"></i></span><div><b>Sandboxes</b><p>Scratch pages where anyone can try out the syntax, test formulas and diagrams, or experiment before writing a real article. Edits here publish directly.</p></div><a class="tbtn primary" href="${esc(pageUrl('Sandbox', 'edit'))}"><i data-lucide="pen-line"></i><span>Open the main sandbox</span></a></div>` : '';
+  grid.innerHTML = intro + (items.length ? items.map(card).join('') : `<div class="lib-empty"><p>No pages match these filters.</p>
+    ${state.q ? `<a class="tbtn primary" href="${esc(pageUrl(state.q, 'new'))}"><i data-lucide="file-plus-2"></i><span>Write a page “${esc(state.q)}”</span></a>` : ''}</div>`);
   $('#lib-more').hidden = list.length <= state.shown;
   $('#lib-more span').textContent = `Show more (${(list.length - state.shown).toLocaleString()} left)`;
   grid.classList.remove('swap-in'); void grid.offsetWidth; grid.classList.add('swap-in');
@@ -115,7 +116,7 @@ function render() {
 
 function card(p) {
   const f = p.fields.find((x) => x >= 0);
-  const tag = p.kind === 't' ? 'Theorem' : p.kind === 'r' ? 'Reference' : p.kind === 'd' ? 'Disambiguation' : f != null ? LIB.fields[f] : '';
+  const tag = p.kind === 's' ? 'Sandbox' : p.kind === 't' ? 'Theorem' : p.kind === 'r' ? 'Reference' : p.kind === 'd' ? 'Disambiguation' : f != null ? LIB.fields[f] : '';
   const linked = p.inbound ? `${p.kind === 'p' ? 'Cited on' : 'Linked from'} ${p.inbound.toLocaleString()} page${p.inbound === 1 ? '' : 's'}` : 'New or rarely linked';
   if (p.kind === 'p') {
     return `<a class="lib-card person" href="${esc(pageUrl(p.name))}" data-name="${esc(p.name)}">

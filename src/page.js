@@ -2,10 +2,11 @@
 // Pages come from the nLab content mirror (any of its ~20 000 pages); editing opens the workspace.
 import { icons } from './main.js';
 import './article.css';
-import './editor.css';
-import { esc, clean, pageUrl, fetchSource, resolvePage, searchPages, loadIndex, PageNotFound, displayTitle } from './nlab.js';
+import { esc, clean, pageUrl, fetchSource, resolvePage, loadIndex, PageNotFound, displayTitle } from './nlab.js';
 import { renderSource, expandIncludes, contextSource, resolveRefs } from './markup.js';
-import { openWorkspace, drafts } from './editor.js';
+import { drafts } from './drafts.js';
+// the editor (CodeMirror, KaTeX tooling…) is loaded only when someone opens it
+const openWorkspace = async (opts) => (await import('./editor.js')).openWorkspace(opts);
 import { latestEdits, allTopics } from './forum-data.js';
 import { fillPreview } from './preview.js';
 
@@ -78,6 +79,41 @@ export function applyFocusRead(root, on = focusOn()) {
     });
     n.replaceWith(frag);
   });
+}
+
+// First use of ADHD reading: what it is, who it is for, and a before/after preview
+function adhdIntro(done) {
+  const sample = 'A functor maps the objects and morphisms of one category to those of another, preserving composition and identities.';
+  const dlg = document.createElement('dialog');
+  dlg.className = 'modal adhd-intro';
+  dlg.setAttribute('aria-labelledby', 'adhd-title');
+  dlg.innerHTML = `<form method="dialog">
+    <span class="adhd-badge"><i data-lucide="book-text"></i>Reading mode</span>
+    <h2 id="adhd-title">ADHD reading</h2>
+    <p class="adhd-lead">A reading mode made for people with <b>ADHD</b>, <b>dyslexia</b> and similar attention or reading difficulties, and for anyone who finds long, dense mathematical text hard to stay with.</p>
+    <ul class="adhd-points">
+      <li><i data-lucide="type"></i><span><b>A calmer font.</b> Lexend, designed to reduce visual stress and make letters easier to tell apart.</span></li>
+      <li><i data-lucide="list"></i><span><b>More space.</b> Wider letter, word and line spacing, so lines don’t blur together.</span></li>
+      <li><i data-lucide="eye"></i><span><b>Bold word beginnings.</b> The first letters of each word guide the eye, so you can keep your place.</span></li>
+      <li><i data-lucide="sigma"></i><span><b>Formulas untouched.</b> Mathematics, code and diagrams stay exactly as they are.</span></li>
+    </ul>
+    <div class="adhd-demo">
+      <div><small>Normal</small><p>${sample}</p></div>
+      <div class="focus-read"><small>ADHD reading</small><p class="adhd-sample">${sample}</p></div>
+    </div>
+    <p class="adhd-note">You can switch it off at any time with the same button. Your choice is remembered on this device.</p>
+    <div class="adhd-actions"><button value="no" class="tbtn">Not now</button><button value="yes" class="tbtn primary"><i data-lucide="check"></i><span>Turn on ADHD reading</span></button></div>
+  </form>`;
+  document.body.append(dlg);
+  applyFocusRead($('.adhd-sample', dlg).parentElement, true);
+  icons();
+  dlg.addEventListener('close', () => {
+    try { localStorage.setItem('nlab-focus-intro', '1'); } catch { /* ignore */ }
+    done(dlg.returnValue === 'yes');
+    dlg.remove();
+  });
+  dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close('no'); });
+  dlg.showModal();
 }
 
 // Bullet lists that are only links to other pages ("Related entries", "Basic facts"…) become a card grid
@@ -174,6 +210,38 @@ function activateTab(name) {
 }
 $$('.side-tabs button').forEach((b) => b.addEventListener('click', () => activateTab(b.dataset.tab)));
 
+// "category: people, physics" lines at the end of a page become coloured chips
+const CAT_STYLE = [
+  [/^people$/, 'users', '#b7791f', 'library/?kind=p', 'People'],
+  [/^reference/, 'book-open', '#6b3fa0', 'library/?kind=r', 'References'],
+  [/^disambiguation/, 'split', '#5f6670', null, 'Disambiguation'],
+  [/physics|quantum|string|gravity|field theory/, 'atom', '#a8253b'],
+  [/category|categor/, 'network', '#1d4f91'],
+  [/homotopy|topolog|knot/, 'orbit', '#2a7a3b'],
+  [/geometry|manifold/, 'globe', '#b7791f'],
+  [/logic|type theory|foundation|set theory|computer/, 'scroll-text', '#6b3fa0'],
+  [/algebra|group|ring|number/, 'sigma', '#1f7a8c'],
+  [/analysis|measure|probab/, 'infinity', '#1f7a8c'],
+  [/history|svg|diagram|image|motivation|meta|nlab|search|terminology|empty/, 'hash', '#5f6670'],
+];
+function categoryChips(body) {
+  $$('p', body).forEach((p) => {
+    const m = p.textContent.trim().match(/^category:\s*(.+)$/i);
+    if (!m || p.children.length > 3) return;
+    const cats = m[1].split(',').map((c) => c.trim()).filter(Boolean);
+    if (!cats.length) return;
+    const nav = document.createElement('nav');
+    nav.className = 'a-cats';
+    nav.setAttribute('aria-label', 'Categories');
+    nav.innerHTML = `<span class="a-cats-l">Filed under</span>${cats.map((c) => {
+      const lc = c.toLowerCase();
+      const [, icon, color, href, label] = CAT_STYLE.find(([re]) => re.test(lc)) || [null, 'tag', '#1d4f91'];
+      return `<a class="a-cat" style="--c:${color}" href="${esc(href || `search?q=${encodeURIComponent(c)}`)}"><i data-lucide="${icon}"></i>${esc(label || c.replace(/^./, (x) => x.toUpperCase()))}</a>`;
+    }).join('')}`;
+    p.replaceWith(nav);
+  });
+}
+
 async function renderInto(body, src) {
   const expanded = await expandIncludes(src, getSource);
   body.innerHTML = renderSource(expanded);
@@ -182,6 +250,7 @@ async function renderInto(body, src) {
   resolveRefs(body);
   diagramFallback(body);
   linkLists(body);
+  categoryChips(body);
   applyFocusRead(body);
   markMissing(body);
   buildToc(body);
@@ -286,7 +355,7 @@ function listDrafts() {
 }
 function renderWrite() {
   scrollTo({ top: 0, left: 0, behavior: 'auto' });
-  setHero({ title: 'Sandbox', crumb: 'Sandbox', meta: 'Draft a new article here. New pages can be edited directly; existing nLab pages accept suggestions from readers.' });
+  setHero({ title: 'Write a page', crumb: 'Write', meta: 'Start a new article. New pages can be edited directly; existing nLab pages accept suggestions from readers.', actions: link('Sandboxes', 'flask-conical', 'library/?kind=s') });
   const body = $('#a-body');
   body.classList.add('loaded', 'is-search');
   const drafts = listDrafts();
@@ -297,7 +366,7 @@ function renderWrite() {
       <fieldset class="w-tpls"><legend>Start from</legend>
         ${Object.entries(TEMPLATES).map(([k, t], i) => `<label class="w-tpl"><input type="radio" name="tpl" value="${k}" ${i === 0 ? 'checked' : ''}><span class="w-ic"><i data-lucide="${t.icon}"></i></span><b>${t.label}</b><small>${t.note}</small></label>`).join('')}
       </fieldset>
-      <div class="w-go"><button class="tbtn primary" type="submit"><i data-lucide="pen-line"></i><span>Open Sandbox</span></button></div>
+      <div class="w-go"><button class="tbtn primary" type="submit"><i data-lucide="pen-line"></i><span>Start writing</span></button></div>
     </form>
     <section class="w-drafts" id="drafts">
       <h2>Your drafts</h2>
@@ -357,7 +426,7 @@ async function showArticle(which) {
     actions: `<button type="button" class="tbtn primary" data-act="${direct ? 'edit' : 'suggest'}" title="${direct ? 'Edit this page (E)' : 'Suggest an edit'}"><i data-lucide="${direct ? 'pencil' : 'message-square-plus'}"></i><span>${direct ? (state.exists ? 'Edit' : 'Create') : 'Suggest an edit'}</span></button>`
       + link('Discuss', 'messages-square', `forum/?q=${encodeURIComponent(state.name)}`)
       + btn('Copy link', 'link', 'data-act="share"')
-      + `<button type="button" class="tbtn" data-act="focus-read" aria-pressed="${focusOn()}" title="Easier reading: Lexend font, wider spacing and bold word beginnings"><i data-lucide="book-text"></i><span>Focus reading</span></button>`,
+      + `<button type="button" class="tbtn" data-act="focus-read" aria-pressed="${focusOn()}" title="ADHD reading: a calmer font, wider spacing and bold word beginnings that guide the eye"><i data-lucide="book-text"></i><span>ADHD reading</span></button>`,
   });
   const bar = $('#draft-bar');
   bar.hidden = !d;
@@ -409,24 +478,181 @@ function openEditor(suggestion = !canDirectEdit()) {
 }
 
 /* ---------------- Search ---------------- */
-async function renderSearch(q) {
-  setHero({ title: `“${q}”`, crumb: 'Search', meta: 'Searching…' });
-  $$('.nav-search input').forEach((i) => { i.value = q; });
-  const [{ total, hits }, topics, exact] = await Promise.all([searchPages(q, 150), allTopics(), resolvePage(q)]);
-  const ql = q.toLowerCase();
-  const disc = topics.filter((t) => t.channel !== 'Latest Changes' && (t.t.toLowerCase().includes(ql) || (t.excerpt || '').toLowerCase().includes(ql))).slice(0, 6);
-  setHero({
-    title: `“${q}”`, crumb: 'Search',
-    meta: `${total.toLocaleString()} page${total === 1 ? '' : 's'}${disc.length ? ` · ${disc.length} forum discussion${disc.length === 1 ? '' : 's'}` : ''}`,
-    actions: exact ? link(`Open “${exact.name}”`, 'arrow-right', pageUrl(exact.name), true) : link(`Create “${q}”`, 'file-plus-2', `${pageUrl(q, 'new')}`, true),
-  });
+const KIND = { c: ['Concept', 'sigma'], t: ['Theorem', 'radical'], p: ['Person', 'user'], r: ['Reference', 'book-open'], d: ['Disambiguation', 'split'] };
+const FILTERS = [['all', 'All'], ['c', 'Concepts'], ['t', 'Theorems'], ['p', 'People'], ['r', 'References']];
+const SR_PAGE = 30;
+const SYNTAX = [
+  ['"natural transformation"', 'Exact phrase'],
+  ['sheaf OR stack', 'Either word'],
+  ['topos NOT elementary', 'Exclude a word (or -elementary)'],
+  ['(monad OR comonad) AND algebra', 'Group with brackets'],
+  ['homot*', 'Any ending'],
+  ['title:fibration', 'Only in titles'],
+  ['summary:anyon', 'Only in summaries'],
+  ['kind:person cohomology', 'Concept, theorem, person, reference'],
+];
+
+async function renderSearch(q0) {
+  const searchMod = import('./search.js');
+  const fieldsP = fetch('snapshot/graph.json').then((r) => r.json()).then((g) => g.fields).catch(() => []);
   const body = $('#a-body');
   body.classList.add('loaded', 'is-search');
-  body.innerHTML = `
-    ${hits.length ? `<section class="s-group"><h2>Pages</h2><div class="s-grid">${hits.map((h) => `<a class="s-item" href="${esc(pageUrl(h.name))}">${esc(displayTitle(h.name))}${h.via ? `<small>also called “${esc(h.via)}”</small>` : ''}</a>`).join('')}</div>${total > hits.length ? `<p class="s-more">Showing ${hits.length} of ${total.toLocaleString()}. Refine your search to narrow it down.</p>` : ''}</section>` : ''}
-    ${disc.length ? `<section class="s-group"><h2>In the forum</h2><div class="s-list">${disc.map((t) => `<a href="forum/?c=${t.channelId}&t=${encodeURIComponent(t.t)}"><b>${esc(t.t)}</b><span>${esc(t.channel)} · ${t.n} message${t.n === 1 ? '' : 's'} · ${rel(t.last)}</span></a>`).join('')}</div></section>` : ''}
-    ${!hits.length && !disc.length ? `<div class="a-empty"><p class="lead">No page is called anything like “${esc(q)}”.</p><p>${link(`Create the page “${q}”`, 'file-plus-2', `${pageUrl(q, 'new')}`, true)}</p></div>` : ''}`;
+  const st = {
+    q: q0.trim(), kind: params.get('kind') || 'all', field: params.has('field') ? +params.get('field') : null,
+    where: params.get('in') === 'title' ? 'title' : 'any', sort: ['linked', 'az'].includes(params.get('sort')) ? params.get('sort') : 'rel',
+    shown: SR_PAGE, hits: [], disc: [], tree: null, advanced: false,
+  };
+  const filtersOn = () => (st.field != null) + (st.where !== 'any') + (st.sort !== 'rel');
+  body.innerHTML = `<div class="sr">
+    <form class="sr-box" role="search" autocomplete="off">
+      <i data-lucide="search"></i>
+      <input type="search" name="q" value="${esc(q0)}" placeholder="Search 20,000 pages: concepts, theorems, people…" aria-label="Search the nLab" spellcheck="false">
+      <button type="button" class="sr-tool" data-sr="help" aria-expanded="false" title="Search syntax"><i data-lucide="circle-help"></i></button>
+      <button type="button" class="sr-tool sr-ftoggle" data-sr="filters" aria-expanded="false"><i data-lucide="sliders-horizontal"></i><span>Filters</span><em hidden></em></button>
+    </form>
+    <div class="sr-help" hidden>
+      <p>Combine words like in a library catalogue. Click an example to try it.</p>
+      <div class="sr-help-grid">${SYNTAX.map(([ex, d]) => `<button type="button" data-ex="${esc(ex)}"><code>${esc(ex)}</code><span>${esc(d)}</span></button>`).join('')}</div>
+    </div>
+    <div class="sr-filters" hidden>
+      <label><span>Field</span><select data-f="field"><option value="">All fields</option></select></label>
+      <div class="sr-seg" role="group" aria-label="Match in"><span>Match in</span><button type="button" data-in="any">Anywhere</button><button type="button" data-in="title">Titles only</button></div>
+      <div class="sr-seg" role="group" aria-label="Sort"><span>Sort</span><button type="button" data-sort="rel">Relevance</button><button type="button" data-sort="linked">Most linked</button><button type="button" data-sort="az">A–Z</button></div>
+      <button type="button" class="linkish sr-reset" data-sr="reset">Reset</button>
+    </div>
+    <p class="sr-explain" hidden></p>
+    <div class="sr-chips" role="tablist" aria-label="Kind of page"></div>
+    <div class="sr-layout">
+      <div class="sr-main" aria-live="polite">${'<div class="sr-skel"><span></span><span></span><span></span></div>'.repeat(5)}</div>
+      <aside class="sr-side"></aside>
+    </div>
+  </div>`;
   icons();
+  const input = $('.sr-box input', body);
+  if (!q0) input.focus();
+  let hl = (t) => esc(t);
+  let FIELDS = [];
+  fieldsP.then((f) => {
+    FIELDS = f;
+    $('[data-f="field"]', body).insertAdjacentHTML('beforeend', f.map((n, i) => `<option value="${i}" ${st.field === i ? 'selected' : ''}>${esc(n)}</option>`).join(''));
+  });
+  if (filtersOn()) { $('.sr-filters', body).hidden = false; $('[data-sr="filters"]', body).setAttribute('aria-expanded', 'true'); }
+
+  const syncUrl = () => {
+    const p = new URLSearchParams();
+    if (st.q) p.set('q', st.q);
+    if (st.kind !== 'all') p.set('kind', st.kind);
+    if (st.field != null) p.set('field', st.field);
+    if (st.where !== 'any') p.set('in', st.where);
+    if (st.sort !== 'rel') p.set('sort', st.sort);
+    history.replaceState(null, '', `search${p.toString() ? `?${p}` : ''}`);
+  };
+  const header = () => {
+    const n = st.hits.length;
+    setHero({
+      title: st.q ? `“${st.q}”` : 'Search', crumb: 'Search',
+      meta: st.q ? `${n.toLocaleString()} page${n === 1 ? '' : 's'}${st.disc.length ? ` · ${st.disc.length} forum discussion${st.disc.length === 1 ? '' : 's'}` : ''}` : 'Search every page of the nLab',
+      actions: '',
+    });
+  };
+  const item = (h) => {
+    const [kl, ki] = KIND[h.kind] || KIND.c;
+    const fl = FIELDS.filter((_, i) => h.fields & (1 << i)).slice(0, 2);
+    return `<li><a class="sr-item" href="${esc(pageUrl(h.name))}">
+      <span class="sr-ic k-${h.kind}"><i data-lucide="${ki}"></i></span>
+      <span class="sr-txt">
+        <b>${hl(displayTitle(h.name))}</b>
+        ${h.via ? `<small>also called “${hl(h.via)}”</small>` : ''}
+        ${h.summary ? `<span class="sr-sum">${hl(h.summary)}</span>` : ''}
+        <span class="sr-meta">${kl}${fl.length ? ` · ${fl.map(esc).join(', ')}` : ''}${h.inbound ? ` · ${h.inbound.toLocaleString()} page${h.inbound === 1 ? '' : 's'} link here` : ''}</span>
+      </span></a></li>`;
+  };
+  const draw = () => {
+    // controls
+    $$('[data-in]', body).forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.in === st.where)));
+    $$('[data-sort]', body).forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.sort === st.sort)));
+    const fsel = $('[data-f="field"]', body); if (fsel) fsel.value = st.field ?? '';
+    const n = filtersOn(), badge = $('.sr-ftoggle em', body);
+    badge.hidden = !n; badge.textContent = n;
+    const ex = $('.sr-explain', body);
+    ex.hidden = !st.advanced || !st.tree;
+    if (!ex.hidden) ex.innerHTML = `<i data-lucide="filter"></i><span>Pages where ${explainTree(st.tree)}</span>`;
+
+    const list = st.kind === 'all' ? st.hits : st.hits.filter((h) => h.kind === st.kind);
+    const count = (k) => (k === 'all' ? st.hits.length : st.hits.filter((h) => h.kind === k).length);
+    $('.sr-chips', body).innerHTML = st.q ? FILTERS.map(([k, l]) => {
+      const c = count(k);
+      return c || k === 'all' || k === st.kind ? `<button type="button" role="tab" data-k="${k}" aria-selected="${k === st.kind}">${l}<span>${c.toLocaleString()}</span></button>` : '';
+    }).join('') : '';
+    const main = $('.sr-main', body);
+    if (!st.q) {
+      main.innerHTML = `<div class="sr-empty"><p class="lead">Type a concept, a theorem or a person.</p><div class="sr-try">${['adjoint functor', 'homotopy type theory', 'Hopf fibration', 'anyon', 'Yoneda lemma', '"spectral sequence" NOT title:spectral'].map((t) => `<button type="button" data-ex="${esc(t)}">${esc(t)}</button>`).join('')}</div></div>`;
+    } else if (!list.length) {
+      main.innerHTML = `<div class="sr-empty"><p class="lead">Nothing matches “${esc(st.q)}”${st.kind !== 'all' || filtersOn() ? ' with these filters' : ''}.</p><p>Try fewer or different words${filtersOn() ? ', <button type="button" class="linkish" data-sr="reset">reset the filters</button>' : ''}${st.kind !== 'all' ? ', <button type="button" class="linkish" data-k="all">search every kind of page</button>' : ''}, or <a href="${esc(pageUrl(st.q, 'new'))}">create the page “${esc(st.q)}”</a>.</p></div>`;
+    } else {
+      const [top, ...rest] = list;
+      const best = top.score >= 850 && st.kind === 'all' && st.sort === 'rel';
+      const shown = best ? rest.slice(0, st.shown - 1) : list.slice(0, st.shown);
+      main.innerHTML = `${best ? `<a class="sr-best" href="${esc(pageUrl(top.name))}">
+          <span class="sr-best-k"><i data-lucide="${(KIND[top.kind] || KIND.c)[1]}"></i>${(KIND[top.kind] || KIND.c)[0]} · best match${top.inbound ? ` · ${top.inbound.toLocaleString()} pages link here` : ''}</span>
+          <h2>${esc(displayTitle(top.name))}</h2>
+          ${top.summary ? `<p>${hl(top.summary)}</p>` : ''}
+          <span class="sr-best-go">Read the page <i data-lucide="arrow-right"></i></span>
+        </a>` : ''}
+        ${shown.length ? `<ol class="sr-list">${shown.map(item).join('')}</ol>` : ''}
+        ${list.length > st.shown ? `<button type="button" class="tbtn sr-more">Show more <span>${(list.length - st.shown).toLocaleString()} more</span></button>` : ''}`;
+    }
+    $('.sr-side', body).innerHTML = st.q ? `${st.disc.length ? `<section><h3><i data-lucide="messages-square"></i>In the forum</h3>${st.disc.map((t) => `<a class="sr-disc" href="forum/?c=${t.channelId}&t=${encodeURIComponent(t.t)}"><b>${hl(t.t)}</b><span>${esc(t.channel)} · ${t.n} message${t.n === 1 ? '' : 's'} · ${rel(t.last)}</span></a>`).join('')}</section>` : ''}
+      <section class="sr-create"><h3><i data-lucide="file-plus-2"></i>Missing a page?</h3><p>Anyone can start one, in LaTeX or visually. Your draft saves as you go.</p>${link(`Create “${st.q.replace(/["()*]|\b(AND|OR|NOT)\b|\w+:/g, '').trim() || st.q}”`, 'pen-line', pageUrl(st.q.replace(/["()*]|\b(AND|OR|NOT)\b|\w+:/g, '').trim() || st.q, 'new'))}</section>` : '';
+    icons();
+  };
+
+  let topicsP, seq = 0, explainTree = () => '';
+  const run = async (q) => {
+    const my = ++seq;
+    const mod = await searchMod;
+    explainTree = mod.explain;
+    const qq = q.trim();
+    const [res, topics] = await Promise.all([qq ? mod.searchAll(qq, { field: st.field, where: st.where, sort: st.sort }) : { hits: [] }, (topicsP ??= allTopics().catch(() => []))]);
+    if (my !== seq) return; // a newer query has started
+    st.q = qq; st.shown = SR_PAGE; st.hits = res.hits; st.tree = res.tree; st.advanced = res.advanced;
+    hl = (t) => mod.highlight(t, qq);
+    const words = qq ? mod.terms(qq) : [];
+    st.disc = words.length ? topics.filter((t) => t.channel !== 'Latest Changes' && words.every((w) => mod.norm(`${t.t} ${t.excerpt || ''}`).includes(w))).slice(0, 6) : [];
+    syncUrl(); header(); draw();
+  };
+
+  let timer;
+  input.addEventListener('input', () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => { $$('.nav-search input').forEach((i) => { i.value = input.value; }); run(input.value); }, 140);
+  });
+  $('.sr-box', body).addEventListener('submit', (e) => {
+    e.preventDefault();
+    const h = st.hits[0];
+    if (h && h.score >= 850 && !st.advanced) location.href = pageUrl(h.name);
+  });
+  body.addEventListener('change', (e) => {
+    if (e.target.matches('[data-f="field"]')) { st.field = e.target.value === '' ? null : +e.target.value; run(input.value); }
+  });
+  body.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-k], [data-in], [data-sort], [data-sr], [data-ex], .sr-more');
+    if (!t) return;
+    const d = t.dataset;
+    if (d.k) { st.kind = d.k; st.shown = SR_PAGE; syncUrl(); draw(); }
+    else if (d.in) { st.where = d.in; run(input.value); }
+    else if (d.sort) { st.sort = d.sort; run(input.value); }
+    else if (d.ex) { input.value = d.ex; run(d.ex); input.focus(); }
+    else if (d.sr === 'reset') { Object.assign(st, { field: null, where: 'any', sort: 'rel', kind: 'all' }); run(input.value); }
+    else if (d.sr === 'help' || d.sr === 'filters') {
+      const panel = $(d.sr === 'help' ? '.sr-help' : '.sr-filters', body);
+      panel.hidden = !panel.hidden;
+      t.setAttribute('aria-expanded', String(!panel.hidden));
+    } else if (t.classList.contains('sr-more')) { st.shown += SR_PAGE * 2; draw(); }
+  });
+  $$('.nav-search input').forEach((i) => { i.value = q0; });
+  header();
+  await run(q0);
 }
 
 /* ---------------- Recent changes ---------------- */
@@ -478,9 +704,15 @@ document.addEventListener('click', async (e) => {
   else if (act === 'random-all') location.href = pageUrl(state.allNames[Math.floor(Math.random() * state.allNames.length)]);
   else if (act === 'focus-read') {
     const on = !focusOn();
-    try { localStorage.setItem(FOCUS_KEY, on ? '1' : '0'); } catch { /* ignore */ }
-    b.setAttribute('aria-pressed', String(on));
-    applyFocusRead($('#a-body'), on);
+    const set = (v) => {
+      try { localStorage.setItem(FOCUS_KEY, v ? '1' : '0'); } catch { /* ignore */ }
+      b.setAttribute('aria-pressed', String(v));
+      applyFocusRead($('#a-body'), v);
+    };
+    let seen = false;
+    try { seen = localStorage.getItem('nlab-focus-intro') === '1'; } catch { /* ignore */ }
+    if (on && !seen) adhdIntro((yes) => { if (yes) { set(true); toast('ADHD reading is on. Click the button again to turn it off.'); } });
+    else { set(on); if (on) toast('ADHD reading is on.'); }
   } else if (act === 'share') { try { await navigator.clipboard.writeText(location.href.replace(/[?&]edit\b/, '')); toast('Link copied.'); } catch { toast(location.href); } }
 });
 addEventListener('keydown', (e) => {

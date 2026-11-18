@@ -370,7 +370,7 @@ html, body, .card, .lib-card, .cq-person, .tbtn, .nav { transition: background-c
 .nav-mode:focus-visible { outline: 2px solid var(--primary); }
 .nav-mode svg { width: 19px; height: 19px; }
 
-/* ===================== Focus reading (ADHD-friendly) ===================== */
+/* ===================== ADHD reading ===================== */
 .a-body.focus-read { --focus-font: 'Lexend Variable', 'Inter Variable', sans-serif; font-family: var(--focus-font); font-size: 18.5px; line-height: 1.85; letter-spacing: .012em; word-spacing: .06em; max-width: 680px; hyphens: none; -webkit-hyphens: none; }
 .a-body.focus-read :is(p, li) { margin-bottom: 1.15em; }
 .a-body.focus-read b.bx { font-weight: 700; color: var(--ink); }
@@ -425,4 +425,51 @@ body.sheet-open { overflow: hidden; }
   .sec-head { grid-template-columns: 1fr !important; }
   .updates { padding: 48px 0; }
   footer .foot-cols { grid-template-columns: 1fr 1fr !important; gap: 22px !important; }
+}
+
+/* Top bar: the CQTS mark is grey like the other icons, and in colour only on the CQTS pages */
+.nav-cqts { display: inline-block; width: 18px; height: 18px; flex: none; background-color: currentColor;
+  -webkit-mask: url('/brand/cqts-mark-96.png') center / contain no-repeat; mask: url('/brand/cqts-mark-96.png') center / contain no-repeat; }
+.nav-links a:not([aria-current]) .nav-cqts { opacity: .85; }
+.nav-links a[aria-current] .nav-cqts, .ns-links a[aria-current] .nav-cqts { -webkit-mask: none; mask: none; background: url('/brand/cqts-mark-96.png') center / contain no-repeat; }
+html[data-mode="dark"] .nav-links a[aria-current] .nav-cqts { background-color: #fff; border-radius: 5px; }
+.cqts-page .nav-links a[href="cqts/"] .nav-cqts { -webkit-mask: none; mask: none; background: url("/brand/cqts-mark-96.png") center / contain no-repeat; opacity: 1; }
+
+/* ===================== Scroll animations =====================
+   Scroll-driven (no JavaScript, no layout shift): things rise, fade and settle in as they enter the
+   screen. Anything already in view when the page loads is simply there. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    @keyframes sa-rise { from { opacity: 0; transform: translateY(42px) scale(.97); } }
+    @keyframes sa-pop { from { opacity: 0; transform: translateY(28px) scale(.9) rotate(-1.5deg); } }
+    @keyframes sa-left { from { opacity: 0; transform: translateX(-60px); } }
+    @keyframes sa-right { from { opacity: 0; transform: translateX(60px); } }
+    @keyframes sa-zoom { from { opacity: 0; transform: scale(.86); filter: blur(6px); } }
+    @keyframes sa-spin { from { transform: rotate(-14deg) scale(.85); } to { transform: rotate(10deg) scale(1.05); } }
+    @keyframes sa-drift { from { transform: translateY(40px); } to { transform: translateY(-40px); } }
+    @keyframes sa-line { from { transform: scaleX(0); } }
+
+    /* home */
+    .h-head, .h-numbers-in > div, .h-feature, .h-live, .h-write-copy, .h-try, .h-cqts, .signup, .h-write-points li, .h-edits li {
+      animation: sa-rise linear both; animation-timeline: view(); animation-range: entry 0% entry 90%; }
+    .h-field { animation: sa-pop linear both; animation-timeline: view(); animation-range: entry 0% entry 80%; }
+    .h-bento .h-field:nth-child(3n+2) { animation-range: entry 8% entry 95%; }
+    .h-bento .h-field:nth-child(3n) { animation-range: entry 16% cover 30%; }
+    .h-numbers-in > div:nth-child(2) { animation-range: entry 8% entry 98%; }
+    .h-numbers-in > div:nth-child(3) { animation-range: entry 16% cover 25%; }
+    .h-numbers-in > div:nth-child(4) { animation-range: entry 24% cover 30%; }
+    .h-feature { animation-name: sa-left; }
+    .h-live { animation-name: sa-right; }
+    .h-feature img { animation: sa-zoom linear both; animation-timeline: view(); animation-range: entry 0% cover 40%; }
+    .h-try { animation-name: sa-zoom; }
+    .h-cqts-art svg { animation: sa-spin linear both; animation-timeline: view(); animation-range: cover 0% cover 100%; }
+    .h-head h2::after { content: ""; display: block; width: 64px; height: 4px; margin-top: 14px; border-radius: 2px; background: var(--primary); transform-origin: left; animation: sa-line linear both; animation-timeline: view(); animation-range: entry 40% cover 35%; }
+
+    /* library, forum, search, articles, CQTS */
+    .lib-card, .topic, .sr-list li, .a-body .link-list > li, .a-body figure, .a-body .a-cats, .cq-person, .cq-director, .cq-tile, .cq-mat, .cq-head, .cq-way, .w-tpl {
+      animation: sa-rise linear both; animation-timeline: view(); animation-range: entry 0% entry 70%; }
+    .lib-grid .lib-card:nth-child(even), .cq-grid .cq-person:nth-child(even) { animation-range: entry 10% entry 85%; }
+    .cq-glyphs span, .cq-campus img { animation: sa-drift linear both; animation-timeline: view(); animation-range: cover 0% cover 100%; }
+    .a-body :is(.theorem, .proposition, .definition, .lemma, .num_theorem, .num_prop, .num_defn, .num_lemma) { animation: sa-left linear both; animation-timeline: view(); animation-range: entry 0% entry 60%; }
+  }
 }

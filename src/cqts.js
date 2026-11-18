@@ -145,6 +145,8 @@ function decoratePeople() {
 // Show one CQTS page: the home page (hero, explore, research) or a single section
 function render(pg) {
   page = pg;
+  document.documentElement.dataset.cq = profileSlug ? 'profile' : pg || 'home';
+  heroTitle.style.visibility = '';
   // CQTS has its own section tabs below the site header; keep the global CQTS link neutral.
   document.querySelector('.nav-links a[href="cqts/"]')?.removeAttribute('aria-current');
   const profile = profileSlug ? PEOPLE[profileSlug] : null;
@@ -198,8 +200,29 @@ function go(pg, push = true, profile = '') {
     scrollTo({ top: below ? document.querySelector('.cq-tabs').getBoundingClientRect().top + scrollY - 64 : scrollY, behavior: 'instant' });
   };
   if (push) history.pushState({ cq: pg, profile }, '', new URL(profile ? `cqts/${profile}/` : pg ? `cqts/${pg}/` : 'cqts/', document.baseURI));
-  if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) document.startViewTransition(swap);
-  else swap();
+  if (!document.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) { swap(); return; }
+  // people ↔ profile: name the card's photo/name/role and the profile's, so they morph into each other
+  const person = profile || profileSlug;
+  const cardParts = (slug) => {
+    const card = document.querySelector(`[data-profile="${slug}"]`);
+    return card ? [card.querySelector('.cq-av'), card.querySelector('h3, h4'), card.querySelector('h3 + p, h4 + p')] : [];
+  };
+  const profileParts = () => { const r = document.querySelector('#person-profile .cq-profile-hero'); return r ? [r.querySelector('.cq-profile-avatar'), r.querySelector('h2'), r.querySelector('h2 + p')] : []; };
+  const NAMES = ['cq-avatar', 'cq-name', 'cq-role'];
+  const tag = (els) => els.forEach((el, i) => { if (el) el.style.viewTransitionName = NAMES[i]; });
+  const untag = () => document.querySelectorAll('[style*="view-transition-name"]').forEach((el) => { el.style.viewTransitionName = ''; });
+  const personal = person && (profile ? !profileSlug : pg === 'people');
+  if (personal) { document.documentElement.classList.add('cq-vt-person'); tag(profile ? cardParts(profile) : profileParts()); }
+  const t = document.startViewTransition(() => {
+    untag();
+    swap();
+    if (personal) {
+      const parts = profile ? profileParts() : cardParts(person);
+      if (!profile) parts[0]?.closest('article')?.scrollIntoView({ block: 'center', behavior: 'instant' });
+      tag(parts);
+    }
+  });
+  t.finished.finally(() => { untag(); document.documentElement.classList.remove('cq-vt-person'); });
 }
 document.addEventListener('click', (e) => {
   const a = e.target.closest('a[href^="cqts/"]');
@@ -376,12 +399,20 @@ if (hero && canvas) {
       }
     }
     // nodes where the worldlines enter and leave (as in the CQTS mark)
-    [0, 1, 2].forEach((sl) => {
-      [H * 0.1, H * 0.9].forEach((y) => {
-        ctx.beginPath(); ctx.arc(slotX(sl), y + oy * 0.4, 11, 0, Math.PI * 2);
-        ctx.fillStyle = '#2c0a5a'; ctx.fill(); ctx.lineWidth = 6; ctx.strokeStyle = '#c9b6ec'; ctx.stroke();
+    // beads ride on the strands: at every other segment boundary each strand passes straight through
+    // its slot, so the beads sit exactly on the worldlines and flow up with them
+    for (let k = 0; k <= segs; k += 2) {
+      const y = top + k * segH + oy;
+      if (y < -20 || y > H + 20) continue;
+      const edge = Math.min(1, Math.max(0, Math.min(y, H - y) / (H * 0.18))); // fade in/out at the edges
+      [0, 1, 2].forEach((sl) => {
+        const strand = [0, 1, 2].find((st) => (paths[st][k] || paths[st][k - 1])?.[paths[st][k] ? 0 : 1] === sl);
+        ctx.globalAlpha = edge;
+        ctx.beginPath(); ctx.arc(slotX(sl), y, 11, 0, Math.PI * 2);
+        ctx.fillStyle = '#2c0a5a'; ctx.fill(); ctx.lineWidth = 6; ctx.strokeStyle = COLORS[strand ?? 0]; ctx.stroke();
+        ctx.globalAlpha = 1;
       });
-    });
+    }
     if (!reduce) requestAnimationFrame(frame);
   }
   new IntersectionObserver(([e]) => { const was = running; running = e.isIntersecting; if (running && !was) requestAnimationFrame(frame); }).observe(hero);

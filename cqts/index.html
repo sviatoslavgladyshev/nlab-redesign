@@ -7,11 +7,14 @@
 <title>Center for Quantum and Topological Systems — nLab</title>
 <meta name="description" content="CQTS at NYU Abu Dhabi: research, Research Symposium 2026, Quantum Colloquium and events. Redesign prototype.">
 <script>(function(){var m=null;try{m=localStorage.getItem('nlab-mode')}catch(e){}if(m!=='dark'&&m!=='light')m=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.dataset.mode=m})();</script>
-<style>/* critical: no flash of unstyled content */.brand-mark{width:28px;height:28px}html:not(.ready) body{opacity:0}html.ready body{opacity:1;transition:opacity .2s ease}</style>
-<noscript><style>html body{opacity:1}</style></noscript>
-<script>setTimeout(function(){document.documentElement.classList.add('ready')},2500)</script>
+<link rel="stylesheet" href="/src/style.css">
+<link rel="stylesheet" href="/src/themes.css">
+<link rel="stylesheet" href="/src/cqts.css">
+<style>/* critical: no flash of unstyled content */.brand-mark{width:28px;height:28px}</style>
+<script type="speculationrules">{"prerender":[{"where":{"selector_matches":".nav-links a, .nav-write, .hero-choices a, .h-field, .cq-tile, .tabs a"},"eagerness":"moderate"}],"prefetch":[{"where":{"href_matches":"/*"},"eagerness":"moderate"}]}</script>
 </head>
 <body id="top" class="cqts-page">
+<script>(function(){var p=location.pathname,b=new URL(document.baseURI).pathname;if(p.indexOf(b)===0)p=p.slice(b.length);var m=p.match(/^cqts\/([^\/?#]+)/),r=m?m[1]:"",P=["research", "people", "symposium-2026", "materials", "activities", "colloquium", "events", "get-involved", "archive"];var c=!r?"home":P.indexOf(r)>=0?r:"profile";document.documentElement.dataset.cq=c;if(c!=="home")document.body.classList.add("cq-sub")})();</script>
 <div class="progress"></div>
 
 <header class="nav">
@@ -23,14 +26,14 @@
     <nav class="nav-links" aria-label="Main">
       <a href="library/"><i data-lucide="library"></i><span>Library</span></a>
       <a href="forum/"><i data-lucide="messages-square"></i><span>Forum</span></a>
-      <a href="cqts/"><img class="nav-cqts" src="brand/cqts-mark-96.png" alt="" width="18" height="18"><span>CQTS</span></a>
+      <a href="cqts/"><span class="nav-cqts" aria-hidden="true"></span><span>CQTS</span></a>
     </nav>
     <form class="nav-search" role="search">
       <i data-lucide="search"></i>
       <input type="search" placeholder="Search" aria-label="Search the nLab">
       <kbd>/</kbd>
     </form>
-    <a class="nav-write" href="wiki/Sandbox/?edit"><i data-lucide="pen-line"></i><span>Sandbox</span></a>
+    <a class="nav-write" href="write"><i data-lucide="pen-line"></i><span>Write</span></a>
     <button class="nav-mode" type="button" aria-label="Switch between light and dark" title="Light / dark"><i data-lucide="moon"></i></button>
     <div class="nav-account"></div>
   </div>
@@ -43,7 +46,7 @@
   <div class="wrap cq-hero-in">
     <nav class="crumbs" aria-label="Breadcrumb"><a href="./">nLab</a><span>/</span><span>CQTS</span></nav>
     <div class="cq-lockup"><img src="brand/nyuad-cqts-lockup.png" alt="NYU Abu Dhabi — Center for Quantum &amp; Topological Systems" width="950" height="186"></div>
-    <h1 class="cq-title">Quantum systems,<br><em>stabilized by topology.</em></h1>
+    <h1 class="cq-title">Quantum systems,<br><em>stabilized by topology.</em></h1><script>(function(){var T={"research": ["Research", "From topological order to working quantum devices"], "people": ["People", "The researchers of the center"], "symposium-2026": ["Symposium 2026", "Research Symposium · 16 November 2026"], "materials": ["Materials", "Slides, videos and papers from every series"], "activities": ["Activities", "Seminars, colloquia and meetings"], "colloquium": ["Quantum Colloquium", "Recent speakers"], "events": ["Events", "Conferences and workshops"], "get-involved": ["Get involved", "Be part of the conversation"], "archive": ["Archive", "The complete record of every series"]},c=document.documentElement.dataset.cq,h=document.currentScript.previousElementSibling,t=T[c];if(t){h.innerHTML=t[0]+"<br><em>"+t[1]+"</em>";var n=h.parentNode.querySelector(".crumbs");n.innerHTML='<a href="./">nLab</a><span>/</span><a href="cqts/">CQTS</a><span>/</span><span>'+t[0]+"</span>"}else if(c==="profile")h.style.visibility="hidden"})();</script>
     <p class="cq-lead">A research center within the Research Institute of New York University Abu Dhabi, studying fundamental questions of quantum systems, with a focus on topological stabilization.</p>
     <div class="cq-cta">
       <a class="cq-btn primary" href="cqts/get-involved/"><i data-lucide="users"></i><span>Get involved</span></a>
@@ -296,7 +299,7 @@
     <div class="cq-ways">
       <a class="cq-way reveal" href="cqts/colloquium/"><span class="cq-ic"><i data-lucide="radio"></i></span><h3>Attend the talks</h3><p>The Quantum Colloquium and the Geometry, Topology &amp; Physics Seminar run throughout the year.</p></a>
       <a class="cq-way reveal d1" href="cqts/events/"><span class="cq-ic"><i data-lucide="users"></i></span><h3>Train with the center</h3><p>The Summer Training Program brings students to NYU Abu Dhabi for two weeks.</p></a>
-      <a class="cq-way reveal d2" href="../wiki/Sandbox/?edit"><span class="cq-ic"><i data-lucide="pen-line"></i></span><h3>Open the Sandbox</h3><p>Much of the center’s theory lives on the nLab. Start a new article or suggest an improvement to an existing one.</p></a>
+      <a class="cq-way reveal d2" href="write"><span class="cq-ic"><i data-lucide="pen-line"></i></span><h3>Write a page</h3><p>Much of the center’s theory lives on the nLab. Start a new article or suggest an improvement to an existing one.</p></a>
     </div>
   </div>
 </section>
@@ -364,10 +367,10 @@
     <div class="foot-cols">
       <div class="foot-about">
         <a class="brand" href="./"><svg class="brand-mark" width="28" height="28" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3c5 6 5 14 0 26C11 17 11 9 16 3z" fill="#6b8fd6"/><path d="M4 12c7-1 13 3 12 17C9 25 4 19 4 12z" fill="#5fae5f"/><path d="M28 12c-7-1-13 3-12 17 7-4 12-10 12-17z" fill="#e0606f"/></svg>nLab</a>
-        <p>The open wiki for mathematics, physics and philosophy. Read it, improve it.</p>
+        <p>The open wiki for mathematics and physics. Read it, improve it.</p>
       </div>
-      <div><h6>Read</h6><a href="wiki/mathematics/">Mathematics</a><a href="wiki/physics/">Physics</a><a href="wiki/philosophy/">Philosophy</a><a href="all">All pages</a></div>
-      <div><h6>Contribute</h6><a href="./#contribute">How to contribute</a><a href="wiki/HowTo/">HowTo</a><a href="wiki/Sandbox/?edit">Sandbox</a></div>
+      <div><h6>Read</h6><a href="wiki/mathematics/">Mathematics</a><a href="wiki/physics/">Physics</a><a href="all">All pages</a></div>
+      <div><h6>Contribute</h6><a href="./#contribute">How to contribute</a><a href="wiki/HowTo/">HowTo</a><a href="write">Write a page</a><a href="library/?kind=s">Sandbox</a></div>
       <div><h6>Community</h6><a href="forum/">Forum</a><a href="recent">Recent changes</a><a href="forum/?new">Start a discussion</a></div>
       <div><h6>CQTS</h6><a href="cqts/">Overview</a><a href="cqts/#Symposium2026">Symposium 2026</a><a href="cqts/#colloquium">Colloquium</a></div>
     </div>

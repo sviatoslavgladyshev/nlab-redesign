@@ -6,6 +6,7 @@ import { esc, clean, pageUrl, fetchSource, loadIndex, displayTitle } from './nla
 import { attachSuggest, randomPage, loadNames, pageExists } from './suggest.js';
 import { latestEdits } from './forum-data.js';
 import credits from './data/credits.json';
+import { heroField } from './hero-field.js';
 
 const $ = (s) => document.querySelector(s);
 
@@ -106,3 +107,26 @@ document.querySelectorAll('img[data-credit]').forEach((img) => {
 const list = $('#credits-list');
 if (list) list.innerHTML = Object.values(credits).map((c) => `
   <li><a href="${esc(c.source)}" target="_blank" rel="noopener">${esc(c.title)}</a> — ${esc(c.author || 'unknown')}, ${c.licenseUrl ? `<a href="${esc(c.licenseUrl)}" target="_blank" rel="noopener">${esc(c.license)}</a>` : esc(c.license)}</li>`).join('');
+
+/* ---------- Full-screen hero: the constellation of concepts ---------- */
+const heroEl = document.querySelector('.hero-v3');
+if (heroEl) heroField(heroEl);
+
+/* ---------- Numbers and field counts from the library index ---------- */
+fetch('snapshot/library.json').then((r) => r.json()).then((lib) => {
+  const fmt = (n) => n.toLocaleString('en-US');
+  const set = (k, v) => document.querySelectorAll(`[data-count="${k}"]`).forEach((el) => { el.textContent = v; });
+  set('pages', fmt(lib.pages.length));
+  set('people', fmt(lib.pages.filter((p) => p[1] === 'p').length));
+  const top = lib.pages.reduce((m, p) => (p[2] > m[2] ? p : m), lib.pages[0]);
+  document.querySelectorAll('[data-count="links"]').forEach((el) => { el.textContent = fmt(top[2]); el.nextElementSibling.textContent = `pages link to “${displayTitle(top[0])}”`; });
+  const counts = lib.fields.map(() => 0);
+  lib.pages.forEach((p) => new Set(p[3].map((s) => lib.subs[s][1])).forEach((f) => { if (f >= 0) counts[f] += 1; }));
+  document.querySelectorAll('.hf-n[data-field]').forEach((el) => { el.textContent = `${fmt(counts[+el.dataset.field] || 0)} pages`; });
+}).catch(() => {});
+
+/* light that follows the pointer on the field tiles */
+document.querySelectorAll('.h-field').forEach((el) => el.addEventListener('pointermove', (e) => {
+  const r = el.getBoundingClientRect();
+  el.style.setProperty('--mx', `${e.clientX - r.left}px`); el.style.setProperty('--my', `${e.clientY - r.top}px`);
+}));

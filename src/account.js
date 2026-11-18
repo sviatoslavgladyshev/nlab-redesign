@@ -95,7 +95,7 @@ function render() {
       <summary aria-label="Account"><span class="av" style="--h:${hue(a.name)};--s:34px">${esc(initials(a.name))}</span></summary>
       <div class="acct-pop">
         <p class="acct-who"><b>${esc(a.name)}</b><span>${esc(a.email)}</span></p>
-        <a href="../wiki/Sandbox/?edit">Open Sandbox</a>
+        <a href="write">Write a page</a>
         <a href="write#drafts">My drafts${n ? ` <em>${n}</em>` : ''}</a>
         <a href="forum/">Forum</a>
         <button type="button" data-acct="out">Sign out</button>

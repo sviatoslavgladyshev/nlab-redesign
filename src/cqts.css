@@ -183,7 +183,7 @@ a.cq-event:hover { box-shadow: 0 16px 40px rgba(40, 10, 80, .12); transform: tra
 .cq-lockup { padding: 16px 22px; }
 .cq-lockup img { display: block; height: 62px; width: auto; }
 @media (max-width: 640px) { .cq-lockup img { height: 40px; } }
-.nav-cqts { width: 18px; height: 18px; object-fit: contain; }
+
 
 /* People */
 .cq-people-intro { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, .9fr); gap: 48px; align-items: center; margin-bottom: 40px; }
@@ -251,7 +251,6 @@ a.cq-event:hover { box-shadow: 0 16px 40px rgba(40, 10, 80, .12); transform: tra
 }
 .cqts-page .progress { background: linear-gradient(90deg, #57068c, #2448b5); }
 .cqts-page .nav-links a[aria-current] { background: var(--tonal); color: var(--on-tonal); }
-.cqts-page .nav-links .nav-cqts { filter: grayscale(1); opacity: .62; }
 .cqts-page .nav-search:focus-within { box-shadow: 0 0 0 3px rgba(87, 6, 140, .15); }
 .cqts-page .tbtn.primary, .cqts-page .nav-write { background: var(--primary); border-color: var(--primary); }
 .cqts-page .nav-join { color: var(--primary); }
@@ -339,7 +338,7 @@ a.cq-event:hover { box-shadow: 0 16px 40px rgba(40, 10, 80, .12); transform: tra
 /* The hero is always dark: its primary button stays white */
 .cq-btn.primary { background: #fff; color: #57068c; }
 html[data-mode="dark"] .cq-tabs .tabs a[aria-current="page"] { color: #c9a6f5; border-bottom-color: #c9a6f5; }
-html[data-mode="dark"] .nav-cqts { background: #fff; border-radius: 5px; padding: 1px; }
+
 html[data-mode="dark"] .cq-tile.featured { background: linear-gradient(135deg, #3b0a6b, #2448b5); }
 /* Person profiles */
 .cq-person-name { color: inherit; text-decoration: none; }
@@ -392,3 +391,30 @@ img.cq-av.photo { object-position: 50% 18%; }
   .cq-sym-head { gap: 16px; }
   .cq-mats { grid-template-columns: 1fr; }
 }
+
+/* the right page is visible from the first paint (set by the inline script at the top of <body>) */
+html[data-cq="home"] .cqts-section[data-page]:not([data-page=""]):not([data-page="research"]),
+html[data-cq="profile"] .cqts-section[data-page],
+html[data-cq="research"] .cqts-section[data-page]:not([data-page="research"]),
+html[data-cq="people"] .cqts-section[data-page]:not([data-page="people"]),
+html[data-cq="symposium-2026"] .cqts-section[data-page]:not([data-page="symposium-2026"]),
+html[data-cq="materials"] .cqts-section[data-page]:not([data-page="materials"]),
+html[data-cq="activities"] .cqts-section[data-page]:not([data-page="activities"]),
+html[data-cq="colloquium"] .cqts-section[data-page]:not([data-page="colloquium"]),
+html[data-cq="events"] .cqts-section[data-page]:not([data-page="events"]),
+html[data-cq="get-involved"] .cqts-section[data-page]:not([data-page="get-involved"]),
+html[data-cq="archive"] .cqts-section[data-page]:not([data-page="archive"]) { display: none !important; }
+html[data-cq="profile"] #person-profile { display: block !important; }
+html[data-cq]:not([data-cq="profile"]) #person-profile { display: none !important; }
+/* no scroll-reveal on the center pages: content is simply there */
+.cqts-page .reveal { opacity: 1 !important; transform: none !important; transition: none !important; }
+
+/* people ↔ profile: the photo and name travel to their place, the rest cross-fades */
+html.cq-vt-person::view-transition-old(root) { animation: cq-fade-out 200ms var(--motion-ease, ease) both; }
+html.cq-vt-person::view-transition-new(root) { animation: cq-rise 380ms 60ms cubic-bezier(.2,.7,.2,1) both; }
+::view-transition-group(cq-avatar), ::view-transition-group(cq-name), ::view-transition-group(cq-role) { animation-duration: 460ms; animation-timing-function: cubic-bezier(.2,.8,.2,1); }
+::view-transition-old(cq-avatar), ::view-transition-new(cq-avatar) { height: 100%; width: 100%; object-fit: cover; }
+::view-transition-old(cq-name), ::view-transition-new(cq-name), ::view-transition-old(cq-role), ::view-transition-new(cq-role) { height: 100%; width: auto; object-fit: none; object-position: left center; }
+::view-transition-image-pair(cq-avatar) { border-radius: 30px; overflow: hidden; }
+@keyframes cq-rise { from { opacity: 0; transform: translateY(14px); } }
+.cqts-page .cq-hero .crumbs { display: none; }

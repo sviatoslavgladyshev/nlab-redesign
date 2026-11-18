@@ -90,3 +90,15 @@
   .lib-subs { display: none; }
 }
 .lc-fields { display: flex; flex-wrap: wrap; gap: 4px; margin: 2px 0; }
+.lib-sandbox { grid-column: 1 / -1; display: flex; align-items: center; gap: 18px; padding: 20px 22px; border-radius: 20px; background: var(--tonal); color: var(--on-tonal); margin-bottom: 6px; }
+.lsb-ic { flex: none; display: grid; place-items: center; width: 46px; height: 46px; border-radius: 14px; background: var(--surface); color: var(--primary); }
+.lsb-ic svg { width: 22px; height: 22px; }
+.lib-sandbox > div { flex: 1; min-width: 0; }
+.lib-sandbox b { font: 600 17px var(--ui); }
+.lib-sandbox p { margin: 4px 0 0; font: 14.5px/1.5 var(--ui); opacity: .85; }
+@media (max-width: 640px) { .lib-sandbox { flex-wrap: wrap; } .lib-sandbox .tbtn { width: 100%; justify-content: center; } }
+/* rows never touch: hover and the selected row stay visibly separate */
+#lib-fields { display: flex; flex-direction: column; gap: 4px; }
+#lib-fields > button { transition: background .15s, color .15s; }
+#lib-fields > button.on:hover { background: color-mix(in srgb, var(--tonal) 85%, var(--primary)); }
+.lib-subs button[aria-pressed="true"] { background: var(--tonal); color: var(--on-tonal); border-color: transparent; }

@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'node:path';
+import { articleMeta } from './scripts/article-meta.mjs';
 
 // Live nLab content is fetched through this proxy, so the browser never hits CORS.
 const nlabProxy = {
@@ -30,8 +31,8 @@ const APP_ROUTES = /^\/(wiki\/.+|search|recent|all|write|page\.html)(\/)?(\?.*)?
 export const SITE = 'https://sviatoslavgladyshev.github.io/nlab-redesign/';
 const PAGES = {
   'index.html': { path: '', image: 'og/home.png',
-    title: 'nLab — the open wiki for mathematics, physics & philosophy',
-    description: 'Read and write the nLab: 20,000+ pages on mathematics, physics and philosophy from the higher-structures point of view. Search, browse by field and author, discuss in the forum, and edit with LaTeX.' },
+    title: 'nLab — the open wiki for mathematics and physics',
+    description: 'Read and write the nLab: 20,000+ pages on mathematics and physics from the higher-structures point of view. Search, browse by field and author, discuss in the forum, and edit with LaTeX.' },
   'library/index.html': { path: 'library/', image: 'og/library.png',
     title: 'Library — every nLab page by field, kind and author',
     description: 'Browse all 20,000+ pages of the nLab: concepts, theorems, people and references, filtered by field (category theory, homotopy theory, geometry, physics…) and sorted by how often they are cited.' },
@@ -42,7 +43,7 @@ const PAGES = {
     title: 'Center for Quantum and Topological Systems (CQTS) — NYU Abu Dhabi',
     description: 'CQTS at NYU Abu Dhabi studies fundamental questions of quantum systems with a focus on topological stabilization: topological order, quantum materials, sensing and computing. Research Symposium 2026, Quantum Colloquium and seminars.' },
   'wiki/index.html': { path: 'wiki/', image: 'og/article.png',
-    title: 'nLab', description: 'An article on the nLab, the open wiki for mathematics, physics and philosophy.' },
+    title: 'nLab', description: 'An article on the nLab, the open wiki for mathematics and physics.' },
 };
 const attr = (v) => String(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 export function seoTags({ title, description, url, image, type = 'website', jsonld }) {
@@ -74,11 +75,24 @@ const JSONLD = {
     parentOrganization: { '@type': 'CollegeOrUniversity', name: 'New York University Abu Dhabi' } },
 };
 
+export const articleJsonld = (m) => {
+  const url = `${SITE}wiki/${encodeURIComponent(m.name).replace(/%20/g, '+')}/`;
+  return m.kind === 'p'
+    ? { '@context': 'https://schema.org', '@type': 'ProfilePage', name: `${m.title} — nLab`, url, description: m.description, mainEntity: { '@type': 'Person', name: m.title } }
+    : { '@context': 'https://schema.org', '@type': 'Article', headline: m.title, name: m.title, url, description: m.description, image: SITE + m.image, about: m.fields, inLanguage: 'en', isPartOf: { '@type': 'WebSite', name: 'nLab', url: SITE } };
+};
 const cleanUrls = (base) => ({
   name: 'clean-urls',
   transformIndexHtml(html, ctx) {
     const key = Object.keys(PAGES).find((k) => ctx.filename.endsWith(`/${k}`) && (k !== 'index.html' || !/\/(wiki|library|forum|cqts)\/index\.html$/.test(ctx.filename)));
     let out = html.replace('<head>', `<head>\n<base href="${base}">`);
+    // an article (dev server): its own title, summary and preview image
+    const art = key === 'wiki/index.html' && decodeURIComponent((ctx.originalUrl || '').split('?')[0]).match(/^\/wiki\/(.+?)\/?$/);
+    if (art) {
+      const m = articleMeta(art[1]);
+      out = out.replace(/<title>[\s\S]*?<\/title>\n?/, '').replace(/<meta name="description"[^>]*>\n?/, '');
+      return out.replace('</head>', `${seoTags({ title: `${m.title} — nLab`, description: m.description, url: `${SITE}wiki/${encodeURIComponent(m.name).replace(/%20/g, '+')}/`, image: m.image, type: 'article', jsonld: articleJsonld(m) })}\n</head>`);
+    }
     if (key) {
       const pg = PAGES[key];
       out = out.replace(/<title>[\s\S]*?<\/title>\n?/, '').replace(/<meta name="description"[^>]*>\n?/, '');

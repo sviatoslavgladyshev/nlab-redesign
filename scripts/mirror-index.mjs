@@ -27,6 +27,39 @@ if (await exists(join(dir, '.git'))) {
 const commit = execFileSync('git', ['-C', dir, 'rev-parse', 'HEAD']).toString().trim();
 const committed = execFileSync('git', ['-C', dir, 'log', '-1', '--format=%cI']).toString().trim();
 
+// A short plain-text summary for search results: the first real paragraph, preferring the "Idea" section
+function plain(t) {
+  return t
+    .replace(/\[\[!\w+[^\]]*\]\]/g, '')
+    .replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, '$2').replace(/\[\[([^\]]+)\]\]/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/\{:[^}]*\}/g, '').replace(/<[^>]+>/g, '')
+    .replace(/\$\$[\s\S]*?\$\$/g, ' … ')
+    .replace(/\\(mathbb|mathcal|mathbf|mathrm|operatorname|text|mathsf|mathfrak)\{([^}]*)\}/g, '$2')
+    .replace(/\\(to|rightarrow|longrightarrow)\b/g, '→').replace(/\\(simeq|cong)\b/g, '≃').replace(/\\infty\b/g, '∞').replace(/\\in\b/g, '∈').replace(/\\times\b/g, '×').replace(/\\otimes\b/g, '⊗')
+    .replace(/\\[a-zA-Z]+/g, '').replace(/[{}]/g, '').replace(/\$/g, '')
+    .replace(/(\*\*|__|\*|_)(\S[^*_]*?)\1/g, '$2')
+    .replace(/&lbrack;/g, '[').replace(/&rbrack;/g, ']').replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ').replace(/&[a-z]+;/g, '')
+    .replace(/---/g, '—').replace(/--/g, '–')
+    .replace(/\s+/g, ' ').trim();
+}
+function summarize(src) {
+  const body = src.replace(/\r/g, '');
+  const at = body.search(/^#+\s*(Idea|Definition|Statement|Overview)\b/im);
+  const paras = (at >= 0 ? body.slice(at) : body).split(/\n\s*\n/);
+  let fallback = '';
+  const cut = (t) => (t.length > 230 ? `${t.slice(0, 230).replace(/\s+\S*$/, '')}…` : t);
+  for (const raw of paras) {
+    const p = raw.trim();
+    if (!p || /^(#|>|\+--|=--|\*|\{:|\\|\[\[!|\||\d+\.|-\s|<)/.test(p)) continue;
+    const t = plain(p);
+    if (t.length < 40) continue;
+    if (t.length < 60 || /[:,]$/.test(t) || /^(So|Thus|Hence|Then|Here|In particular),? /.test(t)) { fallback ||= t; continue; }
+    return cut(t);
+  }
+  return fallback ? cut(fallback) : '';
+}
+
 // Walk pages/** for directories containing a `name` file
 const pages = [];
 const meta = []; // per page: { cats, includes, links }
@@ -40,6 +73,7 @@ async function walk(rel) {
     meta.push({
       cats: [...src.matchAll(/^category:\s*(.+)$/gim)].flatMap((m) => m[1].split(',').map((c) => c.trim().toLowerCase())).filter(Boolean),
       includes: [...new Set([...src.matchAll(/\[\[!include\s+(.+?)\s+-\s+contents\s*\]\]/g)].map((m) => m[1].trim()))],
+      summary: summarize(src),
       links: [...new Set([...src.replace(/\[\[!include[^\]]*\]\]/g, '').matchAll(/\[\[([^\]|#!][^\]|#]*)/g)].map((m) => m[1].trim().toLowerCase()))],
     });
     return;
@@ -62,7 +96,6 @@ const FIELDS = {
   Analysis: ['analysis', 'measure theory', 'functional analysis', 'integration theory', 'probability', 'operator algebra'],
   Physics: ['string theory', 'functorial quantum field theory', 'infinity-Chern-Simons theory', 'physics', 'quantum field theory', 'gravity', 'fields and quanta', 'solid state physics', 'quantum mechanics', 'algebraic quantum field theory'],
   Combinatorics: ['graph theory', 'combinatorics'],
-  Philosophy: ['philosophy', 'philosophy of physics'],
 };
 const fieldNames = Object.keys(FIELDS);
 const subToField = new Map();
@@ -85,6 +118,7 @@ meta.forEach((m, i) => {
 });
 const ownSubs = (m) => [...new Set([...m.includes, ...m.cats.filter((c) => subToField.has(c))].map(subId))];
 const kindOf = (name, m) => {
+  if (/sandbox/i.test(name)) return 's';
   if (m.cats.includes('people')) return 'p';
   if (m.cats.includes('reference')) return 'r';
   if (m.cats.includes('disambiguation')) return 'd';
@@ -92,8 +126,9 @@ const kindOf = (name, m) => {
   return 'c';
 };
 const lib = [];
+const fieldMask = new Array(pages.length).fill(0);
 pages.forEach(([, name], i) => {
-  if (name === 'HomePage' || name.includes(' > ') || /^Sandbox/i.test(name) || /^(nLab|nForum)[ :]/i.test(name) && name.length > 40) return;
+  if (name === 'HomePage' || name.includes(' > ') || /^(nLab|nForum)[ :]/i.test(name) && name.length > 40) return;
   const m = meta[i];
   let fieldSubs = ownSubs(m);
   // People rarely declare a field: use the subjects of the pages that cite them
@@ -103,8 +138,42 @@ pages.forEach(([, name], i) => {
     fieldSubs = [...tally].filter(([, n]) => n >= 2).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([sid]) => sid);
   }
   lib.push([name, kindOf(name, m), inbound[i], fieldSubs]);
+  fieldSubs.forEach((sid) => { const f = subs[sid][1]; if (f >= 0) fieldMask[i] |= 1 << f; });
 });
+// Search index: name, kind, inbound links, aliases, summary (loaded lazily by the search page)
+const search = [];
+pages.forEach(([, name, ...aliases], i) => {
+  if (name === 'HomePage' || name.includes(' > ') || /^Sandbox/i.test(name)) return;
+  const seen = new Set([name.toLowerCase()]);
+  const al = aliases.filter((a) => { const k = a.toLowerCase(); if (seen.has(k) || seen.has(`${k.replace(/s$/, '')}`) && k.endsWith('s')) return false; seen.add(k); return true; });
+  search.push([name, kindOf(name, meta[i]), inbound[i], meta[i].summary, fieldMask[i], ...al]);
+});
+await mkdir(OUT, { recursive: true });
+await writeFile(new URL('search.json', OUT), JSON.stringify(search));
+console.log(`Search: ${search.length} pages, ${search.filter((x) => x[3]).length} with a summary.`);
 await writeFile(new URL('library.json', OUT), JSON.stringify({ fields: fieldNames, subs, pages: lib }));
+
+// ---------- Knowledge graph for the home page: the most-linked concepts and the real links between them ----------
+const conceptIdx = pages.map((_, i) => i)
+  .filter((i) => { const n = pages[i][1]; return kindOf(n, meta[i]) === 'c' && n.length < 28 && n !== 'HomePage' && !/^(nLab|nForum|Sandbox)/i.test(n); })
+  .sort((a, b) => inbound[b] - inbound[a]).slice(0, 90);
+const pos = new Map(conceptIdx.map((i, k) => [i, k]));
+const gEdges = new Set();
+conceptIdx.forEach((i, k) => {
+  for (const l of meta[i].links) {
+    const j = lookup.get(l) ?? lookup.get(l.replace(/s$/, '')) ?? lookup.get(l.replace(/es$/, ''));
+    if (j == null || j === i || !pos.has(j)) continue;
+    const a = Math.min(k, pos.get(j)), b = Math.max(k, pos.get(j));
+    gEdges.add(`${a},${b}`);
+  }
+});
+const gNodes = conceptIdx.map((i) => {
+  const own = [...new Set([...meta[i].includes, ...meta[i].cats.filter((c) => subToField.has(c))])];
+  const f = own.map((x) => subToField.get(x.toLowerCase())).find((x) => x != null);
+  return [pages[i][1], inbound[i], f ?? -1];
+});
+await writeFile(new URL('graph.json', OUT), JSON.stringify({ fields: fieldNames, nodes: gNodes, edges: [...gEdges].map((e) => e.split(',').map(Number)) }));
+console.log(`Graph: ${gNodes.length} concepts, ${gEdges.size} real links between them.`);
 console.log(`Library: ${lib.length} pages, ${subs.length} subject menus, ${lib.filter((x) => x[1] === 'p').length} people.`);
 
 const names = pages.map((p) => p[1]).filter((n) => n !== 'HomePage' && !n.includes(' > ') && !/^Sandbox/i.test(n));

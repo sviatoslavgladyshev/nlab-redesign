@@ -6,9 +6,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Library — nLab</title>
 <script>(function(){var m=null;try{m=localStorage.getItem('nlab-mode')}catch(e){}if(m!=='dark'&&m!=='light')m=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.dataset.mode=m})();</script>
-<style>/* critical: no flash of unstyled content */.brand-mark{width:28px;height:28px}html:not(.ready) body{opacity:0}html.ready body{opacity:1;transition:opacity .2s ease}</style>
-<noscript><style>html body{opacity:1}</style></noscript>
-<script>setTimeout(function(){document.documentElement.classList.add('ready')},2500)</script>
+<link rel="stylesheet" href="/src/style.css">
+<link rel="stylesheet" href="/src/themes.css">
+<link rel="stylesheet" href="/src/library.css">
+<style>/* critical: no flash of unstyled content */.brand-mark{width:28px;height:28px}</style>
+<script type="speculationrules">{"prerender":[{"where":{"selector_matches":".nav-links a, .nav-write, .hero-choices a, .h-field, .cq-tile, .tabs a"},"eagerness":"moderate"}],"prefetch":[{"where":{"href_matches":"/*"},"eagerness":"moderate"}]}</script>
 </head>
 <body id="top" class="library-page">
 <div class="progress"></div>
@@ -26,7 +28,7 @@
     <nav class="nav-links" aria-label="Main">
       <a href="library/"><i data-lucide="library"></i><span>Library</span></a>
       <a href="forum/"><i data-lucide="messages-square"></i><span>Forum</span></a>
-      <a href="cqts/"><img class="nav-cqts" src="brand/cqts-mark-96.png" alt="" width="18" height="18"><span>CQTS</span></a>
+      <a href="cqts/"><span class="nav-cqts" aria-hidden="true"></span><span>CQTS</span></a>
     </nav>
     <form class="nav-search" role="search">
       <i data-lucide="search"></i>
@@ -78,10 +80,10 @@
     <div class="foot-cols">
       <div class="foot-about">
         <a class="brand" href="./"><svg class="brand-mark" width="28" height="28" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3c5 6 5 14 0 26C11 17 11 9 16 3z" fill="#6b8fd6"/><path d="M4 12c7-1 13 3 12 17C9 25 4 19 4 12z" fill="#5fae5f"/><path d="M28 12c-7-1-13 3-12 17 7-4 12-10 12-17z" fill="#e0606f"/></svg>nLab</a>
-        <p>The open wiki for mathematics, physics and philosophy. Read it, improve it.</p>
+        <p>The open wiki for mathematics and physics. Read it, improve it.</p>
       </div>
-      <div><h6>Read</h6><a href="wiki/mathematics/">Mathematics</a><a href="wiki/physics/">Physics</a><a href="wiki/philosophy/">Philosophy</a><a href="all">All pages</a></div>
-      <div><h6>Contribute</h6><a href="./#contribute">How to contribute</a><a href="wiki/HowTo/">HowTo</a><a href="wiki/Sandbox/?edit">Sandbox</a></div>
+      <div><h6>Read</h6><a href="wiki/mathematics/">Mathematics</a><a href="wiki/physics/">Physics</a><a href="all">All pages</a></div>
+      <div><h6>Contribute</h6><a href="./#contribute">How to contribute</a><a href="wiki/HowTo/">HowTo</a><a href="write">Write a page</a><a href="library/?kind=s">Sandbox</a></div>
       <div><h6>Community</h6><a href="forum/">Forum</a><a href="recent">Recent changes</a><a href="forum/?new">Start a discussion</a></div>
       <div><h6>CQTS</h6><a href="cqts/">Overview</a><a href="cqts/#Symposium2026">Symposium 2026</a><a href="cqts/#colloquium">Colloquium</a></div>
     </div>
