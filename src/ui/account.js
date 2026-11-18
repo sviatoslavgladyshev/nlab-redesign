@@ -7,7 +7,7 @@ import { auth as forumAuth, signIn as forumSignIn, signOut as forumSignOut } fro
 import { dbEnabled, currentUser, displayName, initAuth, signUp, signIn, signOut, resetPassword } from '../core/db.js';
 import { drafts } from '../core/drafts.js';
 import { esc, FORUM } from '../core/nlab.js';
-import { icons } from './app.js';
+import { icons, busy } from './app.js';
 
 const initials = (n) => n.split(/\s+/).map((w) => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
 const hue = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
@@ -37,8 +37,9 @@ function makeDialog(html, onReady) {
 const submitting = (form, fn) => form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const err = form.querySelector('.si-err'), btn = form.querySelector('[type="submit"]');
-  err.textContent = ''; btn.disabled = true;
-  try { await fn(form); } catch (ex) { err.textContent = ex.friendly || ex.message || String(ex); } finally { btn.disabled = false; }
+  if (err) err.textContent = '';
+  const stop = busy(btn);
+  try { await fn(form); } catch (ex) { if (err) err.textContent = ex.friendly || ex.message || String(ex); } finally { stop(); }
 });
 
 /* ---------- site account (database) ---------- */

@@ -29,6 +29,19 @@ const ICONS = {
 };
 // Re-run after inserting markup that contains <i data-lucide="…">
 export const icons = () => createIcons({ icons: ICONS });
+// A button's loading state: a spinner and a short label while something is on its way.
+// Returns a function that puts the button back.
+const BUSY_LABEL = { 'Sign in': 'Signing in…', 'Create account': 'Creating account…', 'Send link': 'Sending…', 'Connect': 'Connecting…', 'Sign up': 'Signing up…', Continue: 'Opening…' };
+export function busy(btn) {
+  if (!btn) return () => {};
+  const html = btn.innerHTML, label = btn.textContent.trim();
+  btn.disabled = true;
+  btn.classList.add('is-busy');
+  btn.setAttribute('aria-busy', 'true');
+  btn.style.minWidth = `${btn.offsetWidth}px`; // no jump in width
+  btn.innerHTML = `<span class="btn-spin" aria-hidden="true"></span><span>${BUSY_LABEL[label] || label}</span>`;
+  return () => { btn.innerHTML = html; btn.disabled = false; btn.classList.remove('is-busy'); btn.removeAttribute('aria-busy'); btn.style.minWidth = ''; };
+}
 icons();
 
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -227,7 +240,7 @@ $$('form.signup').forEach((f) => {
     }
     const topics = [...f.querySelectorAll('input[name="topic"]:checked')].map((i) => i.value);
     const btn = f.querySelector('button');
-    btn.disabled = true;
+    const stop = busy(btn);
     try {
       if (dbEnabled) await subscribe(email.value.trim(), topics);
       else if (UPDATES_ENDPOINT) {
@@ -240,7 +253,7 @@ $$('form.signup').forEach((f) => {
       f.querySelector('.signup-ok span').textContent = `Thanks — updates will go to ${email.value.trim()}.`;
     } catch {
       note.textContent = 'Sorry, that didn’t work. Please try again in a moment.';
-      btn.disabled = false;
+      stop();
     }
   });
 });

@@ -482,3 +482,11 @@ html[data-mode="dark"] .nav-links a[aria-current] .nav-cqts { background-color: 
 .acct-done p { margin: 0; color: var(--ink-2); line-height: 1.55; max-width: 34ch; overflow-wrap: anywhere; }
 .acct-done .modal-actions { justify-content: center; width: 100%; }
 .acct-done .modal-actions .tbtn { min-width: 140px; justify-content: center; }
+/* loading buttons */
+.is-busy { cursor: progress !important; opacity: .92; }
+.is-busy > span { display: inline-flex; align-items: center; }
+.btn-spin { width: 16px; height: 16px; flex: none; margin-right: 8px; border-radius: 50%; border: 2.5px solid currentColor; border-right-color: transparent; opacity: .9; animation: btn-spin .7s linear infinite; }
+@keyframes btn-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .btn-spin { animation-duration: 1.6s; } }
+.tbtn.primary.is-busy, .tbtn.primary.is-busy:disabled, .signup button.is-busy:disabled { opacity: 1; background: var(--primary-hover, #173f75); border-color: var(--primary-hover, #173f75); color: #fff; filter: none; }
+html[data-mode="dark"] .tbtn.primary.is-busy { color: #0f1218; }
