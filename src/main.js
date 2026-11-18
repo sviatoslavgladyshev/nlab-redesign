@@ -1,6 +1,8 @@
 // nLab redesign — shared behaviour (icons, reveal, nav, search, hero diagram)
 import './style.css';
 import './themes.css';
+import { attachSuggest } from './suggest.js';
+import './account.js';
 import {
   createIcons, Search, ArrowRight, ArrowUpRight, Sigma, Atom, Lightbulb, BookOpen, BookMarked, PenLine, Quote,
   MessagesSquare, Sparkles, Shuffle, History, Server, Palette, Radio, Calendar, FileText, Presentation,
@@ -8,6 +10,8 @@ import {
   ChevronLeft, Globe, Telescope, Infinity as InfinityIcon,
   Pencil, Bold, Italic, Link, Heading2, List, ListOrdered, Radical, SquareFunction, Save, X, Eye, GitCompare,
   Upload, Copy, Check, Code, Info, RotateCcw, FileCode,
+  LogIn, Inbox, Hash, Plus, Send, ArrowLeft, MessageSquarePlus, Undo2, Redo2, Type, ChevronDown, PanelRight, Keyboard,
+  CircleHelp, Trash2, ListTree, Omega, TextQuote, Clock, Dices, FilePlus2, CircleCheck, CloudUpload,
 } from 'lucide';
 
 const ICONS = {
@@ -17,6 +21,8 @@ const ICONS = {
   Infinity: InfinityIcon,
   Pencil, Bold, Italic, Link, Heading2, List, ListOrdered, Radical, SquareFunction, Save, X, Eye, GitCompare,
   Upload, Copy, Check, Code, Info, RotateCcw, FileCode,
+  LogIn, Inbox, Hash, Plus, Send, ArrowLeft, MessageSquarePlus, Undo2, Redo2, Type, ChevronDown, PanelRight, Keyboard,
+  CircleHelp, Trash2, ListTree, Omega, TextQuote, Clock, Dices, FilePlus2, CircleCheck, CloudUpload,
 };
 // Re-run after inserting markup that contains <i data-lucide="…">
 export const icons = () => createIcons({ icons: ICONS });
@@ -50,6 +56,7 @@ addEventListener('scroll', onScroll, { passive: true });
 onScroll();
 
 /* ---------- Search (any search form on the page) ---------- */
+$$('form[role="search"]').forEach(attachSuggest);
 $$('form[role="search"]').forEach((f) => f.addEventListener('submit', (e) => {
   e.preventDefault();
   const q = f.querySelector('input').value.trim();
@@ -197,3 +204,41 @@ function conceptDiagram(canvas) {
 }
 const diagram = document.querySelector('canvas.kgraph');
 if (diagram) conceptDiagram(diagram);
+
+/* ---------- Sign up for updates ----------
+   Posts to the mailing-list endpoint in VITE_UPDATES_ENDPOINT (e.g. a Buttondown / Mailchimp / Formspree
+   form URL). Without one configured, the sign-up is kept in this browser so the flow can be tried. */
+const UPDATES_ENDPOINT = import.meta.env.VITE_UPDATES_ENDPOINT || '';
+$$('form.signup').forEach((f) => {
+  const email = f.querySelector('input[type="email"]');
+  const note = f.querySelector('.signup-note');
+  if (!UPDATES_ENDPOINT) note.textContent = 'Prototype: sign-ups are kept in this browser until a mailing list is connected.';
+  f.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!email.checkValidity() || !email.value.trim()) {
+      email.closest('.signup-row').animate([{ transform: 'translateX(-6px)' }, { transform: 'translateX(6px)' }, { transform: 'none' }], 240);
+      email.focus();
+      note.textContent = 'Please enter a valid email address.';
+      return;
+    }
+    const topics = [...f.querySelectorAll('input[name="topic"]:checked')].map((i) => i.value);
+    const btn = f.querySelector('button');
+    btn.disabled = true;
+    try {
+      if (UPDATES_ENDPOINT) {
+        const res = await fetch(UPDATES_ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ email: email.value.trim(), topics }) });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      } else {
+        localStorage.setItem('nlab-updates', JSON.stringify({ email: email.value.trim(), topics, at: Date.now() }));
+      }
+      f.classList.add('done');
+      f.querySelector('.signup-ok span').textContent = `Thanks — updates will go to ${email.value.trim()}.`;
+    } catch {
+      note.textContent = 'Sorry, that didn’t work. Please try again in a moment.';
+      btn.disabled = false;
+    }
+  });
+});
+
+/* Styles are in place: show the page (see the inline style in each page's <head>) */
+document.documentElement.classList.add('ready');

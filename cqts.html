@@ -6,6 +6,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Center for Quantum and Topological Systems — nLab</title>
 <meta name="description" content="CQTS at NYU Abu Dhabi: research, Research Symposium 2026, Quantum Colloquium and events. Redesign prototype.">
+<style>/* critical: no flash of unstyled content */.brand-mark{width:28px;height:28px}html:not(.ready) body{opacity:0}html.ready body{opacity:1;transition:opacity .2s ease}</style>
+<noscript><style>html body{opacity:1}</style></noscript>
+<script>setTimeout(function(){document.documentElement.classList.add('ready')},2500)</script>
 </head>
 <body id="top">
 <div class="progress"></div>
@@ -13,21 +16,22 @@
 <header class="nav">
   <div class="wrap">
     <a class="brand" href="./" aria-label="nLab home">
-      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3c5 6 5 14 0 26C11 17 11 9 16 3z" fill="#193c78"/><path d="M4 12c7-1 13 3 12 17C9 25 4 19 4 12z" fill="#226622"/><path d="M28 12c-7-1-13 3-12 17 7-4 12-10 12-17z" fill="#a41e32"/></svg>
+      <svg class="brand-mark" width="28" height="28" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3c5 6 5 14 0 26C11 17 11 9 16 3z" fill="#193c78"/><path d="M4 12c7-1 13 3 12 17C9 25 4 19 4 12z" fill="#226622"/><path d="M28 12c-7-1-13 3-12 17 7-4 12-10 12-17z" fill="#a41e32"/></svg>
       nLab <small>redesign</small>
     </a>
     <nav class="nav-links" aria-label="Main">
-      <a href="./#new"><i data-lucide="newspaper"></i><span>What’s new</span></a>
       <a href="./#browse"><i data-lucide="library"></i><span>Browse</span></a>
-      <a href="./#contribute"><i data-lucide="pen-line"></i><span>Contribute</span></a>
-      <a href="./#about"><i data-lucide="book-open"></i><span>About</span></a>
-      <a href="cqts.html" aria-current="page"><i data-lucide="orbit"></i><span>CQTS</span></a>
+      <a href="page.html?recent"><i data-lucide="history"></i><span>Recent</span></a>
+      <a href="forum.html"><i data-lucide="messages-square"></i><span>Forum</span></a>
+      <a href="cqts.html"><i data-lucide="orbit"></i><span>CQTS</span></a>
     </nav>
     <form class="nav-search" role="search">
       <i data-lucide="search"></i>
       <input type="search" placeholder="Search" aria-label="Search the nLab">
       <kbd>/</kbd>
     </form>
+    <a class="nav-write" href="page.html?write"><i data-lucide="pen-line"></i><span>Write</span></a>
+    <div class="nav-account"></div>
   </div>
 </header>
 
@@ -213,17 +217,36 @@
 </section>
 </main>
 
+<!-- ================= Sign up for updates ================= -->
+<section class="updates" id="updates">
+  <div class="wrap updates-in">
+    <div>
+      <h2>Get CQTS updates</h2>
+      <p>Symposium talks, colloquium speakers and new materials, announced as soon as they are scheduled.</p>
+    </div>
+    <form class="signup" novalidate>
+      <div class="signup-row">
+        <input type="email" name="email" placeholder="Your email address" aria-label="Email address" autocomplete="email" required>
+        <button type="submit">Sign up</button>
+      </div>
+      <div class="signup-topics" role="group" aria-label="What to receive"><label><input type="checkbox" name="topic" value="events" checked>Events & talks</label><label><input type="checkbox" name="topic" value="colloquium" checked>Quantum Colloquium</label><label><input type="checkbox" name="topic" value="digest">nLab digest</label></div>
+      <p class="signup-note">One email a month at most. Unsubscribe any time.</p>
+      <p class="signup-ok" role="status"><i data-lucide="circle-check"></i><span>Thanks — you’re signed up.</span></p>
+    </form>
+  </div>
+</section>
+
 <footer>
   <div class="wrap">
     <div class="foot-cols">
       <div class="foot-about">
-        <a class="brand" href="./"><svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3c5 6 5 14 0 26C11 17 11 9 16 3z" fill="#6b8fd6"/><path d="M4 12c7-1 13 3 12 17C9 25 4 19 4 12z" fill="#5fae5f"/><path d="M28 12c-7-1-13 3-12 17 7-4 12-10 12-17z" fill="#e0606f"/></svg>nLab</a>
-        <p>Collaborative work on mathematics, physics and philosophy.</p>
+        <a class="brand" href="./"><svg class="brand-mark" width="28" height="28" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3c5 6 5 14 0 26C11 17 11 9 16 3z" fill="#6b8fd6"/><path d="M4 12c7-1 13 3 12 17C9 25 4 19 4 12z" fill="#5fae5f"/><path d="M28 12c-7-1-13 3-12 17 7-4 12-10 12-17z" fill="#e0606f"/></svg>nLab</a>
+        <p>The open wiki for mathematics, physics and philosophy. Read it, improve it.</p>
       </div>
-      <div><h6>Browse</h6><a href="page.html?p=mathematics">Mathematics</a><a href="page.html?p=physics">Physics</a><a href="page.html?p=philosophy">Philosophy</a><a href="https://ncatlab.org/nlab/all_pages">All pages</a></div>
-      <div><h6>Contribute</h6><a href="page.html?p=HowTo">HowTo</a><a href="page.html?p=Sandbox">Sandbox</a><a href="https://nforum.ncatlab.org/">nForum</a></div>
-      <div><h6>Activity</h6><a href="https://ncatlab.org/nlab/latest_revisions">Latest changes</a><a href="./#new">What’s new</a></div>
-      <div><h6>CQTS</h6><a href="#overview">Overview</a><a href="#Symposium2026">Symposium 2026</a><a href="#colloquium">Colloquium</a></div>
+      <div><h6>Read</h6><a href="page.html?p=mathematics">Mathematics</a><a href="page.html?p=physics">Physics</a><a href="page.html?p=philosophy">Philosophy</a><a href="page.html?all">All pages</a></div>
+      <div><h6>Contribute</h6><a href="./#contribute">How to contribute</a><a href="page.html?p=HowTo">HowTo</a><a href="page.html?p=Sandbox&amp;edit">Sandbox</a></div>
+      <div><h6>Community</h6><a href="forum.html">Forum</a><a href="page.html?recent">Recent changes</a><a href="forum.html?new">Start a discussion</a></div>
+      <div><h6>CQTS</h6><a href="cqts.html">Overview</a><a href="cqts.html#Symposium2026">Symposium 2026</a><a href="cqts.html#colloquium">Colloquium</a></div>
     </div>
     <div class="foot-base"><span>Content from the nLab page “Center for Quantum and Topological Systems”.</span><span>Redesign prototype — not the official nLab.</span></div>
   </div>

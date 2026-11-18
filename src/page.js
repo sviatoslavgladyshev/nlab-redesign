@@ -1,51 +1,79 @@
-// Article / search viewer: loads nLab content (live through the dev proxy, or from the
-// build-time snapshot) and re-renders it in the redesigned layout. Articles are editable:
-// the editor loads the page's nLab source, previews it live and keeps edits in this browser
-// until they are submitted to the nLab.
+// Article / search / recent changes / all pages, all rendered in this UI.
+// Pages come from the nLab content mirror (any of its ~20 000 pages); editing opens the workspace.
 import { icons } from './main.js';
 import './article.css';
-import { ORIGIN, LIVE, decodeName, encodeName, liveUrl, esc, rewriteHref, clean, fetchDoc, fetchSource, NotInSnapshot } from './nlab.js';
-import { renderSource, diffLines } from './markup.js';
+import './editor.css';
+import { esc, clean, pageUrl, fetchSource, resolvePage, searchPages, loadIndex, PageNotFound } from './nlab.js';
+import { renderSource, expandIncludes, contextSource, resolveRefs } from './markup.js';
+import { openWorkspace, drafts } from './editor.js';
+import { latestEdits, allTopics } from './forum-data.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
+const params = new URLSearchParams(location.search);
+const getSource = async (n) => (await fetchSource(n)).source;
 
-function setHero({ title, crumb, meta = '', actions = [], edit = false }) {
+function setHero({ title, crumb, meta = '', actions = '' }) {
   document.title = `${title} — nLab`;
   $('#a-title').textContent = title;
   $('#crumb-current').textContent = crumb ?? title;
-  $('#a-meta').textContent = meta || ' ';
-  $('#a-actions').innerHTML = (edit ? '<button type="button" class="tbtn primary" data-act="edit" title="Edit this page (E)"><i data-lucide="pencil"></i><span>Edit</span></button>' : '')
-    + actions.map(([label, href, icon]) =>
-      `<a class="tbtn" href="${esc(href)}" target="_blank" rel="noopener">${icon ? `<i data-lucide="${icon}"></i>` : ''}<span>${esc(label)}</span></a>`).join('');
+  $('#a-meta').innerHTML = meta || '&nbsp;';
+  $('#a-actions').innerHTML = actions;
   icons();
 }
-
-function showError(name, err) {
-  setHero({ title: name || 'Not found', meta: 'This page could not be loaded.' });
-  $('#a-body').innerHTML = `
-    <div class="a-empty">
-      <p class="lead">We couldn’t load this page from ncatlab.org (${esc(err.message || err)}).</p>
-      <p class="mt-s">It may not exist yet — or the dev server proxy isn’t running. Try
-      <a href="${ORIGIN}/nlab/show/${encodeName(name || '')}" target="_blank" rel="noopener">opening it on the live nLab ›</a></p>
-    </div>`;
-}
-
+const btn = (label, icon, attrs) => `<button type="button" class="tbtn" ${attrs}><i data-lucide="${icon}"></i><span>${esc(label)}</span></button>`;
+const link = (label, icon, href, primary = false) => `<a class="tbtn${primary ? ' primary' : ''}" href="${esc(href)}"><i data-lucide="${icon}"></i><span>${esc(label)}</span></a>`;
+const rel = (ts) => {
+  const d = Date.now() / 1000 - ts;
+  if (d < 3600) return `${Math.max(1, Math.round(d / 60))} min ago`;
+  if (d < 86400) return `${Math.round(d / 3600)} h ago`;
+  if (d < 86400 * 7) return `${Math.round(d / 86400)} d ago`;
+  return new Date(ts * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+};
 const toast = (msg) => {
   const t = Object.assign(document.createElement('div'), { className: 'toast', role: 'status', textContent: msg });
   document.body.append(t);
-  setTimeout(() => t.classList.add('out'), 4200);
-  setTimeout(() => t.remove(), 4800);
+  setTimeout(() => t.classList.add('out'), 3800);
+  setTimeout(() => t.remove(), 4400);
 };
 
-/* ---------------- Shared post-processing ---------------- */
+/* ---------------- Rendering helpers ---------------- */
 function numberEnvs(root) {
   let n = 0;
-  root.querySelectorAll('[class^="num_"], [class*=" num_"]').forEach((env) => {
-    n += 1;
-    const head = env.querySelector('h6');
-    if (head && !/\d/.test(head.textContent)) head.textContent = `${head.textContent.trim()} ${n}`;
+  root.querySelectorAll('[class^="num_"] > h6, [class*=" num_"] > h6').forEach((h) => { n += 1; if (!/\d/.test(h.textContent)) h.textContent = `${h.textContent.trim()} ${n}`; });
+}
+// Bullet lists that are only links to other pages ("Related entries", "Basic facts"…) become a card grid
+function linkLists(root) {
+  const linksOf = (li) => [...li.querySelectorAll(':scope > a[href], :scope > p > a[href]')];
+  const onlyLinks = (li) => {
+    const links = linksOf(li);
+    if (!links.length || li.querySelector('ul, ol, .katex')) return false;
+    let rest = li.textContent;
+    links.forEach((a) => { rest = rest.replace(a.textContent, ''); });
+    return /^[\s,;.:·]*$/.test(rest);
+  };
+  root.querySelectorAll('ul').forEach((ul) => {
+    const items = [...ul.children];
+    if (items.length < 2 || ul.closest('.link-list') || !items.every(onlyLinks)) return;
+    ul.classList.add('link-list');
+    items.forEach((li) => {
+      const links = linksOf(li);
+      if (links.length === 1) {
+        links[0].insertAdjacentHTML('beforeend', '<span class="ll-go" aria-hidden="true">→</span>');
+        li.replaceChildren(links[0]);
+      } else {
+        li.classList.add('ll-multi');
+        li.replaceChildren(...links.flatMap((a, i) => (i ? [document.createTextNode(' · '), a] : [a])));
+      }
+    });
   });
+}
+
+async function markMissing(root) {
+  const links = $$('a[data-wiki]', root);
+  await Promise.all(links.map(async (a) => {
+    if (!(await resolvePage(a.dataset.wiki.split('#')[0]))) { a.classList.add('missing'); a.title = 'This page doesn’t exist yet — click to create it'; a.href += '&new'; }
+  }));
 }
 
 let spy;
@@ -54,12 +82,11 @@ function buildToc(body) {
   const heads = [...body.querySelectorAll('h2[id], h3[id]')];
   const toc = $('#a-toc');
   toc.innerHTML = '';
-  if (!heads.length && $('#ctx-tab').hidden) return;
-  $('#a-side').hidden = false;
-  document.body.classList.add('has-side');
+  const hasCtx = !$('#ctx-tab').hidden;
+  $('#a-side').hidden = !heads.length && !hasCtx;
+  document.body.classList.toggle('has-side', heads.length > 0 || hasCtx);
   $('[data-tab="toc"]').hidden = !heads.length;
-  if (!heads.length) { activateTab('ctx'); return; }
-
+  if (!heads.length) { if (hasCtx) activateTab('ctx'); return; }
   let s2 = 0, s3 = 0;
   toc.innerHTML = heads.map((h) => {
     const lvl = h.tagName[1];
@@ -77,358 +104,322 @@ function buildToc(body) {
   }, { rootMargin: '-80px 0px -70% 0px' });
   heads.forEach((h) => spy.observe(h));
 }
-
 function activateTab(name) {
   $$('.side-tabs button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
   $$('[data-panel]').forEach((p) => { p.hidden = p.dataset.panel !== name; });
 }
 $$('.side-tabs button').forEach((b) => b.addEventListener('click', () => activateTab(b.dataset.tab)));
 
-// Render nLab source to a sanitized fragment
-function sourceToNodes(src) {
-  const wrap = document.createElement('div');
-  wrap.innerHTML = renderSource(src);
-  clean(wrap);
-  numberEnvs(wrap);
-  return wrap;
+async function renderInto(body, src) {
+  const expanded = await expandIncludes(src, getSource);
+  body.innerHTML = renderSource(expanded);
+  clean(body);
+  numberEnvs(body);
+  resolveRefs(body);
+  linkLists(body);
+  markMissing(body);
+  buildToc(body);
 }
 
-/* ---------------- Local drafts ---------------- */
-const draftKey = (name) => `nlab-draft:${name}`;
-const drafts = {
-  get(name) { try { return JSON.parse(localStorage.getItem(draftKey(name))); } catch { return null; } },
-  set(name, d) { try { localStorage.setItem(draftKey(name), JSON.stringify(d)); return true; } catch { return false; } },
-  clear(name) { try { localStorage.removeItem(draftKey(name)); } catch { /* ignore */ } },
-};
+async function renderContext(src) {
+  const ctx = contextSource(src);
+  const box = $('#a-ctx');
+  if (!ctx.trim()) { $('#ctx-tab').hidden = true; box.innerHTML = ''; return; }
+  box.innerHTML = renderSource(await expandIncludes(ctx, getSource), { context: true });
+  clean(box);
+  box.querySelectorAll('.hide').forEach((h, i) => {
+    const head = h.previousElementSibling;
+    if (!head || !/^H[3-6]$/.test(head.tagName)) return;
+    head.classList.add('ctx-toggle');
+    head.setAttribute('aria-expanded', String(i === 0));
+    h.hidden = i !== 0;
+    head.addEventListener('click', () => { h.hidden = !h.hidden; head.setAttribute('aria-expanded', String(!h.hidden)); });
+  });
+  box.querySelectorAll('h1, h2, h3').forEach((h) => { if (/^\s*context\s*$/i.test(h.textContent)) h.remove(); });
+  $('#ctx-tab').hidden = false;
+}
 
 /* ---------------- Article ---------------- */
-const state = { name: '', published: null, meta: '', actions: [], original: null, showingDraft: false };
+const TEMPLATES = {
+  concept: { label: 'A concept', icon: 'sigma', note: 'Idea, definition, properties, examples', make: (n) => `## Idea
 
-function showPublished() {
+What is ${n}, and why does it matter? Explain it in a few sentences, linking to related pages like [[category theory]].
+
+## Definition
+
++-- {: .num_defn #Definition}
+###### Definition
+
+A **${n}** is …
+
+=--
+
+## Properties
+
+## Examples
+
+## Related concepts
+
+* [[ ]]
+
+## References
+
+` },
+  result: { label: 'A theorem or result', icon: 'radical', note: 'Statement, proof, consequences', make: (n) => `## Statement
+
++-- {: .num_theorem #Statement}
+###### Theorem
+
+…
+
+=--
+
++-- {: .proof}
+###### Proof
+
+…
+
+=--
+
+## Consequences
+
+## Related results
+
+* [[ ]]
+
+## References
+
+` },
+  person: { label: 'A person', icon: 'users', note: 'Researcher, affiliation, selected writings', make: (n) => `* [personal page]( )
+
+## Selected writings
+
+* …
+
+## Related entries
+
+* [[ ]]
+
+[[!redirects ${n}]]
+` },
+  blank: { label: 'Blank page', icon: 'file-text', note: 'Start from nothing', make: () => '## Idea\n\n' },
+};
+const NEW_TEMPLATE = (name) => (TEMPLATES[params.get('tpl')] || TEMPLATES.concept).make(name);
+
+/* ---------------- Write an article ---------------- */
+function listDrafts() {
+  const out = [];
+  try {
+    for (const k of Object.keys(localStorage)) {
+      if (!k.startsWith('nlab-draft:')) continue;
+      const d = JSON.parse(localStorage.getItem(k));
+      out.push({ name: k.slice(11), ...d });
+    }
+  } catch { /* ignore */ }
+  return out.sort((a, b) => b.savedAt - a.savedAt);
+}
+function renderWrite() {
+  setHero({ title: 'Write an article', crumb: 'Write', meta: 'Give it a title, pick a starting point, and write. Your work is saved as you go, and you publish when it’s ready.' });
   const body = $('#a-body');
-  body.replaceChildren(state.published.cloneNode(true));
-  state.showingDraft = false;
-  setHero({ title: state.name, meta: state.meta, actions: state.actions, edit: true });
-  updateDraftBar();
-  buildToc(body);
+  body.classList.add('loaded', 'is-search');
+  const drafts = listDrafts();
+  body.innerHTML = `
+    <form class="w-form" id="w-form">
+      <label class="w-title">Title<input id="w-name" type="text" placeholder="e.g. Hopf invariant" autocomplete="off" required></label>
+      <p class="w-hint" id="w-hint">Use the name of the concept, result or person, as you would in a dictionary.</p>
+      <fieldset class="w-tpls"><legend>Start from</legend>
+        ${Object.entries(TEMPLATES).map(([k, t], i) => `<label class="w-tpl"><input type="radio" name="tpl" value="${k}" ${i === 0 ? 'checked' : ''}><span class="w-ic"><i data-lucide="${t.icon}"></i></span><b>${t.label}</b><small>${t.note}</small></label>`).join('')}
+      </fieldset>
+      <div class="w-go"><button class="tbtn primary" type="submit"><i data-lucide="pen-line"></i><span>Start writing</span></button></div>
+    </form>
+    <section class="w-drafts" id="drafts">
+      <h2>Your drafts</h2>
+      ${drafts.length ? `<ul>${drafts.map((d) => `<li><a href="${esc(pageUrl(d.name))}&edit"><b>${esc(d.name)}</b><span>${d.isNew ? 'New article' : 'Edit of an existing page'} · saved ${new Date(d.savedAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span></a></li>`).join('')}</ul>`
+        : '<p class="w-none">No drafts yet. Anything you start writing appears here, saved in this browser.</p>'}
+    </section>`;
+  icons();
+  const input = $('#w-name');
+  input.focus();
+  let t;
+  input.addEventListener('input', () => {
+    clearTimeout(t);
+    t = setTimeout(async () => {
+      const q = input.value.trim();
+      const hit = q && await resolvePage(q);
+      $('#w-hint').innerHTML = hit
+        ? `There is already a page <a href="${esc(pageUrl(hit.name))}">${esc(hit.name)}</a>. <a href="${esc(pageUrl(hit.name))}&edit">Improve it instead</a>, or choose a different title.`
+        : 'Use the name of the concept, result or person, as you would in a dictionary.';
+    }, 200);
+  });
+  $('#w-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const q = input.value.trim();
+    if (!q) return;
+    const hit = await resolvePage(q);
+    location.href = hit ? `${pageUrl(hit.name)}&edit` : `${pageUrl(q)}&new&tpl=${new FormData(e.target).get('tpl')}`;
+  });
 }
 
-function showDraft() {
-  const d = drafts.get(state.name);
-  if (!d) return showPublished();
-  const body = $('#a-body');
-  body.replaceChildren(...sourceToNodes(d.source).childNodes);
-  state.showingDraft = true;
-  setHero({ title: state.name, meta: `Edited in this browser${d.summary ? ` — “${d.summary}”` : ''}`, actions: state.actions, edit: true });
-  updateDraftBar();
-  buildToc(body);
-}
+const state = { name: '', published: '', exists: true, showingDraft: false };
 
-function updateDraftBar() {
+async function showArticle(which) {
   const d = drafts.get(state.name);
+  const useDraft = which === 'draft' && d;
+  state.showingDraft = !!useDraft;
+  const src = useDraft ? d.source : state.published;
+  const body = $('#a-body');
+  if (!state.exists && !useDraft) {
+    body.innerHTML = `<div class="a-empty">
+      <p class="lead">There is no page called “${esc(state.name)}” yet.</p>
+      <p>You can start it now: write in the visual editor or in LaTeX, and publish it to the nLab when it’s ready.</p>
+      <p class="mt-s">${link('Create this page', 'file-plus-2', `${pageUrl(state.name)}&new`, true)} ${link('Search for similar pages', 'search', `page.html?search=${encodeURIComponent(state.name)}`)}</p>
+    </div>`;
+    buildToc(body);
+  } else await renderInto(body, src);
+  const words = src.replace(/\$[^$]*\$|\[\[!.*?\]\]|[#*_>`{}]/g, ' ').split(/\s+/).filter(Boolean).length;
+  const idx = await loadIndex();
+  const meta = useDraft
+    ? `<span class="badge draft">Your draft</span> saved ${new Date(d.savedAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`
+    : state.exists ? `${words.toLocaleString()} words · from the nLab, as of ${new Date(idx.committed || Date.now()).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}` : 'New page';
+  setHero({
+    title: state.name,
+    meta,
+    actions: `<button type="button" class="tbtn primary" data-act="edit" title="Edit this page (E)"><i data-lucide="pencil"></i><span>${state.exists ? 'Edit' : 'Create'}</span></button>`
+      + link('Discuss', 'messages-square', `forum.html?q=${encodeURIComponent(state.name)}`)
+      + btn('Copy link', 'link', 'data-act="share"'),
+  });
   const bar = $('#draft-bar');
   bar.hidden = !d;
-  if (!d) return;
-  bar.classList.toggle('viewing-published', !state.showingDraft);
-  $('#draft-when').textContent = `Saved ${new Date(d.savedAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}.`;
-  $('b', bar).textContent = state.showingDraft ? 'You are viewing your edited version.' : 'You have unsubmitted edits to this page.';
-  $('[data-act="toggle-published"] span', bar).textContent = state.showingDraft ? 'Show published' : 'Show my version';
+  if (d) {
+    bar.classList.toggle('viewing-published', !useDraft);
+    $('#draft-title').textContent = useDraft ? 'You are reading your unpublished draft.' : 'You have an unpublished draft of this page.';
+    $('#draft-when').textContent = `Saved ${new Date(d.savedAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}, in this browser only.`;
+    $('[data-act="toggle-published"] span').textContent = useDraft ? 'Show published' : 'Show my draft';
+    $('[data-act="toggle-published"]').hidden = !state.exists;
+  }
+  icons();
 }
 
 async function renderArticle(requested) {
   $('#crumb-current').textContent = requested;
-  const { doc, path } = await fetchDoc(`/nlab/show/${encodeName(requested)}`);
-  const rev = $('#revision', doc);
-  if (!rev) throw new Error('No page content');
-
-  // Follow nLab redirects to the canonical page name
-  const m = path.match(/^\/nlab\/show\/(.+)$/);
-  const name = m ? decodeName(m[1]) : requested;
-  if (name !== requested) { const u = new URL(location.href); u.searchParams.set('p', name); history.replaceState(null, '', u); }
-
-  const ctx = $('.rightHandSide', rev);
-  ctx?.remove();
-  rev.querySelectorAll('.toc, .maruku_toc, #section_table_of_contents').forEach((n) => n.remove());
-  [...rev.querySelectorAll('h1')].forEach((h) => { if (/^\s*contents\s*$/i.test(h.textContent)) h.remove(); });
-  clean(rev);
-  numberEnvs(rev);
-
-  const revised = ($('.revisedby', doc)?.textContent.replace(/\s+/g, ' ').trim() || '').split(/(?<=\d)\.\s/)[0];
-  const discuss = [...doc.querySelectorAll('.navigation a')].find((a) => /discuss/i.test(a.textContent));
-  const enc = encodeName(name);
-  Object.assign(state, {
-    name,
-    meta: revised.replace(/\.?\s*$/, ''),
-    actions: [
-      ['History', `${ORIGIN}/nlab/history/${enc}`, 'history'],
-      ...(discuss ? [['Discuss', new URL(discuss.getAttribute('href'), ORIGIN).href, 'messages-square']] : []),
-      ['View on nLab', `${ORIGIN}/nlab/show/${enc}`, 'external-link'],
-    ],
-    published: document.createDocumentFragment(),
-  });
-  state.published.append(...rev.childNodes);
-
-  if (ctx && ctx.textContent.trim()) {
-    clean(ctx);
-    $('#a-ctx').append(...ctx.childNodes);
-    $('#ctx-tab').hidden = false;
+  let name = requested, source = '';
+  try {
+    ({ name, source } = await fetchSource(requested));
+    state.exists = true;
+  } catch (e) {
+    if (!(e instanceof PageNotFound)) throw e;
+    state.exists = false;
   }
+  if (name !== requested) { const u = new URL(location.href); u.searchParams.set('p', name); history.replaceState(null, '', u); }
+  Object.assign(state, { name, published: source });
   $('#a-body').classList.add('loaded');
-  if (drafts.get(name)) showDraft(); else showPublished();
+  if (state.exists) await renderContext(source);
+  await showArticle(drafts.get(name) ? 'draft' : 'published');
 
-  if (new URLSearchParams(location.search).has('edit')) openEditor();
+  if (params.has('edit') || params.has('new')) openEditor();
   else if (location.hash) document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView();
 }
 
-/* ---------------- Editor ---------------- */
-const ed = {
-  root: $('#editor'), text: $('#ed-text'), preview: $('#ed-preview'), diff: $('#ed-diff'), summary: $('#ed-summary'),
-  status: $('#ed-status'), open: false, base: '', timer: 0,
-};
-const dirty = () => ed.open && ed.text.value !== ed.base;
-
-async function openEditor() {
-  if (ed.open || !state.name) return;
-  ed.open = true;
-  document.body.classList.add('editing');
-  $('#a-layout').hidden = true;
-  $('#draft-bar').hidden = true;
-  ed.root.hidden = false;
-  $('#a-meta').textContent = 'Editing';
-  $('#a-actions').hidden = true;
-  const url = new URL(location.href); url.searchParams.set('edit', ''); history.replaceState(null, '', url.href.replace(/edit=(&|$)/, 'edit$1'));
-  scrollTo({ top: 0 });
-
+function openEditor() {
   const d = drafts.get(state.name);
-  ed.text.value = d?.source ?? '';
-  ed.summary.value = d?.summary ?? '';
-  ed.text.disabled = !d;
-  ed.text.placeholder = 'Loading the page source…';
-  try {
-    state.original ??= await fetchSource(state.name);
-  } catch (e) {
-    if (!d) {
-      ed.text.placeholder = '';
-      ed.text.value = '';
-      ed.status.innerHTML = `<b>Could not load the source</b> (${esc(e.message)}). <a href="${ORIGIN}/nlab/edit/${encodeName(state.name)}" target="_blank" rel="noopener">Edit on ncatlab.org ›</a>`;
-      ed.status.classList.add('err');
-      return;
-    }
-  }
-  if (!d) ed.text.value = state.original;
-  ed.base = ed.text.value;
-  ed.text.disabled = false;
-  renderPreview();
-  ed.text.focus();
-  ed.text.setSelectionRange(0, 0);
-  ed.text.scrollTop = 0;
-}
-
-function closeEditor() {
-  ed.open = false;
-  document.body.classList.remove('editing');
-  ed.root.hidden = true;
-  $('#a-layout').hidden = false;
-  $('#a-actions').hidden = false;
-  const url = new URL(location.href); url.searchParams.delete('edit'); history.replaceState(null, '', url);
-  ed.status.classList.remove('err');
-}
-
-function renderPreview() {
-  clearTimeout(ed.timer);
-  ed.timer = setTimeout(() => {
-    const nodes = sourceToNodes(ed.text.value);
-    nodes.querySelectorAll('a[href]:not([href^="#"])').forEach((a) => { a.target = '_blank'; a.rel = 'noopener'; });
-    ed.preview.replaceChildren(...nodes.childNodes);
-    renderDiff();
-  }, 140);
-}
-
-function renderDiff() {
-  const base = state.original ?? ed.base;
-  const { ops, offset, added, removed } = diffLines(base, ed.text.value);
-  $('#ed-count').textContent = added || removed ? `+${added} −${removed}` : '';
-  if (!added && !removed) { ed.diff.innerHTML = '<p class="d-none">No changes yet.</p>'; return; }
-  // Show changed lines with three lines of context
-  const keep = ops.map((o, i) => ops.slice(Math.max(0, i - 3), i + 4).some((x) => x[0] !== ' '));
-  let html = '', ln = offset, gap = 0;
-  ops.forEach(([op, line], i) => {
-    if (op !== '+') ln += 1;
-    if (!keep[i]) { gap += 1; return; }
-    if (gap) { html += `<div class="d-gap">⋯ ${gap} unchanged line${gap === 1 ? '' : 's'}</div>`; gap = 0; }
-    const cls = op === '+' ? 'd-add' : op === '-' ? 'd-del' : 'd-ctx';
-    html += `<div class="${cls}"><span class="d-ln">${op === '+' ? '' : ln}</span><span class="d-op">${op}</span><code>${esc(line) || ' '}</code></div>`;
+  const start = d?.source ?? (state.exists ? state.published : NEW_TEMPLATE(state.name));
+  const u = new URL(location.href); u.searchParams.delete('new'); u.searchParams.set('edit', ''); history.replaceState(null, '', u.href.replace(/edit=(&|$)/, 'edit$1'));
+  openWorkspace({
+    name: state.name, original: state.exists ? state.published : '', start, isNew: !state.exists,
+    onExit: (how) => {
+      const v = new URL(location.href); v.searchParams.delete('edit'); history.replaceState(null, '', v);
+      showArticle(drafts.get(state.name) ? 'draft' : 'published');
+      if (how === 'published') toast('Thanks! It may take a little while for the nLab mirror to show your change here.');
+      else if (drafts.get(state.name)) toast('Draft saved in this browser.');
+    },
   });
-  if (gap) html += `<div class="d-gap">⋯ ${gap} unchanged line${gap === 1 ? '' : 's'}</div>`;
-  ed.diff.innerHTML = html;
 }
 
-function save() {
-  const src = ed.text.value;
-  if (src === state.original) drafts.clear(state.name);
-  else if (!drafts.set(state.name, { source: src, summary: ed.summary.value.trim(), savedAt: Date.now() })) {
-    toast('Could not save: browser storage is unavailable.');
-    return;
-  }
-  ed.base = src;
-  closeEditor();
-  if (drafts.get(state.name)) { showDraft(); toast('Saved in this browser. Use “Submit to nLab” to publish it.'); }
-  else { showPublished(); toast('No changes — showing the published page.'); }
-  scrollTo({ top: 0 });
+/* ---------------- Search ---------------- */
+async function renderSearch(q) {
+  setHero({ title: `“${q}”`, crumb: 'Search', meta: 'Searching…' });
+  $$('.nav-search input').forEach((i) => { i.value = q; });
+  const [{ total, hits }, topics, exact] = await Promise.all([searchPages(q, 150), allTopics(), resolvePage(q)]);
+  const ql = q.toLowerCase();
+  const disc = topics.filter((t) => t.channel !== 'Latest Changes' && (t.t.toLowerCase().includes(ql) || (t.excerpt || '').toLowerCase().includes(ql))).slice(0, 6);
+  setHero({
+    title: `“${q}”`, crumb: 'Search',
+    meta: `${total.toLocaleString()} page${total === 1 ? '' : 's'}${disc.length ? ` · ${disc.length} forum discussion${disc.length === 1 ? '' : 's'}` : ''}`,
+    actions: exact ? link(`Open “${exact.name}”`, 'arrow-right', pageUrl(exact.name), true) : link(`Create “${q}”`, 'file-plus-2', `${pageUrl(q)}&new`, true),
+  });
+  const body = $('#a-body');
+  body.classList.add('loaded', 'is-search');
+  body.innerHTML = `
+    ${hits.length ? `<section class="s-group"><h2>Pages</h2><div class="s-grid">${hits.map((h) => `<a class="s-item" href="${esc(pageUrl(h.name))}">${esc(h.name)}${h.via ? `<small>also called “${esc(h.via)}”</small>` : ''}</a>`).join('')}</div>${total > hits.length ? `<p class="s-more">Showing ${hits.length} of ${total.toLocaleString()}. Refine your search to narrow it down.</p>` : ''}</section>` : ''}
+    ${disc.length ? `<section class="s-group"><h2>In the forum</h2><div class="s-list">${disc.map((t) => `<a href="forum.html?c=${t.channelId}&t=${encodeURIComponent(t.t)}"><b>${esc(t.t)}</b><span>${esc(t.channel)} · ${t.n} message${t.n === 1 ? '' : 's'} · ${rel(t.last)}</span></a>`).join('')}</div></section>` : ''}
+    ${!hits.length && !disc.length ? `<div class="a-empty"><p class="lead">No page is called anything like “${esc(q)}”.</p><p>${link(`Create the page “${q}”`, 'file-plus-2', `${pageUrl(q)}&new`, true)}</p></div>` : ''}`;
+  icons();
 }
 
-function cancel() {
-  if (dirty() && !confirm('Discard your unsaved changes?')) return;
-  closeEditor();
-  if (drafts.get(state.name)) showDraft(); else showPublished();
+/* ---------------- Recent changes ---------------- */
+async function renderRecent() {
+  setHero({ title: 'Recent changes', crumb: 'Recent changes', meta: 'Every edit to the nLab is announced in the forum, with its author’s summary.', actions: link('Discussions', 'messages-square', 'forum.html') });
+  const edits = await latestEdits(80);
+  const body = $('#a-body');
+  body.classList.add('loaded', 'is-search');
+  let day = '';
+  body.innerHTML = `<ol class="recent">${edits.map((e) => {
+    const d = new Date(e.when * 1000).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+    const head = d !== day ? `<li class="r-day">${(day = d)}</li>` : '';
+    return `${head}<li class="r-item"><a class="r-page" href="${esc(pageUrl(e.page))}">${esc(e.page)}</a>
+      <p>${e.summary ? esc(e.summary) : '<i>No summary</i>'}</p>
+      <span class="r-meta">${esc(e.author || 'anonymous')}${e.rev ? ` · revision ${esc(e.rev)}` : ''} · ${new Date(e.when * 1000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span></li>`;
+  }).join('')}</ol>`;
+  icons();
 }
 
-async function submit() {
-  const d = drafts.get(state.name);
-  if (!d) return;
-  try { await navigator.clipboard.writeText(d.source); } catch { /* clipboard may be blocked */ }
-  window.open(`${ORIGIN}/nlab/edit/${encodeName(state.name)}`, '_blank', 'noopener');
-  toast('Your source is copied. Paste it into the nLab editor that just opened and save it there.');
+/* ---------------- All pages ---------------- */
+async function renderAll() {
+  const { pages } = await loadIndex();
+  const names = pages.map((p) => p[1]).filter((n) => n !== 'HomePage' && !n.includes(' > ')).sort((a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' }));
+  const key = (n) => { const c = n[0].toUpperCase(); return /[A-Z]/.test(c) ? c : '#'; };
+  const letters = [...new Set(names.map(key))];
+  setHero({ title: 'All pages', crumb: 'All pages', meta: `${names.length.toLocaleString()} pages, A to Z`, actions: btn('Random page', 'shuffle', 'data-act="random-all"') });
+  const body = $('#a-body');
+  body.classList.add('loaded', 'is-search');
+  const show = (L) => {
+    const list = names.filter((n) => key(n) === L);
+    $$('.az button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.l === L)));
+    $('#az-list').innerHTML = list.map((n) => `<a href="${esc(pageUrl(n))}">${esc(n)}</a>`).join('');
+    $('#az-count').textContent = `${list.length.toLocaleString()} pages under “${L}”`;
+  };
+  body.innerHTML = `<nav class="az">${letters.map((L) => `<button type="button" data-l="${L}">${L}</button>`).join('')}</nav><p class="s-more" id="az-count"></p><div class="az-list" id="az-list"></div>`;
+  body.querySelector('.az').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) show(b.dataset.l); });
+  show(letters.includes('A') ? 'A' : letters[0]);
+  state.allNames = names;
 }
 
-// Editor views (split / source / preview / changes)
-$$('.ed-tabs button').forEach((b) => b.addEventListener('click', () => {
-  $$('.ed-tabs button').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
-  $('.ed-panes').dataset.view = b.dataset.view;
-  if (b.dataset.view === 'changes') renderDiff();
-}));
-// Narrow screens have no room for side-by-side panes
-const narrow = matchMedia('(max-width: 900px)');
-const fitView = () => { if (narrow.matches && $('.ed-panes').dataset.view === 'split') $('.ed-tabs [data-view="write"]').click(); };
-narrow.addEventListener('change', fitView);
-fitView();
-
-// Formatting
-function insert(text, selStart, selEnd) {
-  const t = ed.text;
-  t.focus();
-  const start = t.selectionStart;
-  if (!document.execCommand?.('insertText', false, text)) t.setRangeText(text, t.selectionStart, t.selectionEnd, 'end');
-  if (selStart != null) t.setSelectionRange(start + selStart, start + (selEnd ?? selStart));
-  renderPreview();
-}
-function wrap(before, after, placeholder) {
-  const t = ed.text;
-  const sel = t.value.slice(t.selectionStart, t.selectionEnd) || placeholder;
-  insert(before + sel + after, before.length, before.length + sel.length);
-}
-function prefixLines(fn) {
-  const t = ed.text;
-  const v = t.value;
-  const s = v.lastIndexOf('\n', t.selectionStart - 1) + 1;
-  let e = v.indexOf('\n', t.selectionEnd); if (e < 0) e = v.length;
-  t.setSelectionRange(s, e);
-  const lines = v.slice(s, e).split('\n').map(fn).join('\n');
-  insert(lines, lines.length);
-}
-const FMT = {
-  bold: () => wrap('**', '**', 'bold text'),
-  italic: () => wrap('_', '_', 'emphasis'),
-  code: () => wrap('`', '`', 'code'),
-  math: () => wrap('$', '$', 'x'),
-  display: () => wrap('\n$$\n  ', '\n  \\,.\n$$\n', 'a \\otimes b'),
-  link: () => wrap('[[', ']]', 'page name'),
-  heading: () => prefixLines((l) => (/^#{2,}\s/.test(l) ? l.replace(/^(#+)/, '$1#') : `## ${l}`).replace(/^#{7,}\s/, '')),
-  list: () => prefixLines((l) => `* ${l}`),
-  olist: () => prefixLines((l, i) => `${i + 1}. ${l}`),
-};
-$$('.ed-toolbar button').forEach((b) => b.addEventListener('click', () => FMT[b.dataset.fmt]?.()));
-$('.ed-toolbar select').addEventListener('change', (e) => {
-  const [cls, label] = e.target.value.split('|');
-  e.target.value = '';
-  if (!cls) return;
-  const id = `${label}${Date.now().toString(36).slice(-4)}`;
-  const block = cls === 'proof'
-    ? `\n+-- {: .proof}\n###### Proof\n\n…\n\n=--\n`
-    : `\n+-- {: .num_${cls} #${id}}\n###### ${label}\n\n…\n\n=--\n`;
-  const at = block.indexOf('…');
-  insert(block, at, at + 1);
-});
-
-ed.text.addEventListener('input', renderPreview);
-ed.text.addEventListener('keydown', (e) => {
-  const mod = e.metaKey || e.ctrlKey;
-  if (mod && e.key.toLowerCase() === 'b') { e.preventDefault(); FMT.bold(); }
-  else if (mod && e.key.toLowerCase() === 'i') { e.preventDefault(); FMT.italic(); }
-  else if (mod && e.key.toLowerCase() === 'm') { e.preventDefault(); FMT.math(); }
-  else if (e.key === 'Tab' && !e.shiftKey) { e.preventDefault(); insert('  '); }
-});
-// Keep the preview roughly in step with the source
-ed.text.addEventListener('scroll', () => {
-  const t = ed.text;
-  const r = t.scrollTop / Math.max(1, t.scrollHeight - t.clientHeight);
-  ed.preview.scrollTop = r * (ed.preview.scrollHeight - ed.preview.clientHeight);
-}, { passive: true });
-
-// Buttons (hero, draft bar, editor footer)
-document.addEventListener('click', (e) => {
+/* ---------------- Buttons ---------------- */
+document.addEventListener('click', async (e) => {
   const b = e.target.closest('[data-act]');
   if (!b) return;
   const act = b.dataset.act;
   if (act === 'edit') openEditor();
-  else if (act === 'save') save();
-  else if (act === 'cancel') cancel();
-  else if (act === 'submit') submit();
-  else if (act === 'toggle-published') (state.showingDraft ? showPublished : showDraft)();
-  else if (act === 'discard' && confirm('Discard your edits to this page? This cannot be undone.')) {
-    drafts.clear(state.name);
-    showPublished();
-    toast('Your edits were discarded.');
-  }
+  else if (act === 'toggle-published') showArticle(state.showingDraft ? 'published' : 'draft');
+  else if (act === 'random-all') location.href = pageUrl(state.allNames[Math.floor(Math.random() * state.allNames.length)]);
+  else if (act === 'share') { try { await navigator.clipboard.writeText(location.href.replace(/[?&]edit\b/, '')); toast('Link copied.'); } catch { toast(location.href); } }
 });
 addEventListener('keydown', (e) => {
-  if (ed.open && (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') { e.preventDefault(); save(); }
-  else if (ed.open && e.key === 'Escape') cancel();
-  else if (!ed.open && state.name && e.key === 'e' && !e.metaKey && !e.ctrlKey && !e.altKey
-    && !/input|textarea|select/i.test(document.activeElement?.tagName)) { e.preventDefault(); openEditor(); }
+  if (state.name && !document.body.classList.contains('ws-open') && e.key === 'e' && !e.metaKey && !e.ctrlKey && !e.altKey
+    && !/input|textarea|select/i.test(document.activeElement?.tagName) && !document.activeElement?.isContentEditable) { e.preventDefault(); openEditor(); }
 });
-addEventListener('beforeunload', (e) => { if (dirty()) e.preventDefault(); });
-
-/* ---------------- Search ---------------- */
-async function renderSearch(q) {
-  setHero({ title: `“${q}”`, crumb: 'Search', meta: 'Searching the nLab…' });
-  $$('.nav-search input').forEach((i) => { i.value = q; });
-  const { doc } = await fetchDoc(`/nlab/search?query=${encodeURIComponent(q)}`);
-  const content = $('#Content', doc);
-  const groups = [...(content?.querySelectorAll('h2') || [])].map((h2) => {
-    let ul = h2.nextElementSibling;
-    while (ul && ul.tagName !== 'UL' && ul.tagName !== 'H2') ul = ul.nextElementSibling;
-    const items = ul && ul.tagName === 'UL' ? [...ul.querySelectorAll('a[href]')] : [];
-    return { heading: h2.textContent.trim(), items };
-  });
-  const total = groups.reduce((s, g) => s + g.items.length, 0);
-  setHero({
-    title: `“${q}”`,
-    crumb: 'Search',
-    meta: total ? `${total} result${total === 1 ? '' : 's'}` : 'No results',
-    actions: [['Search on ncatlab.org', `${ORIGIN}/nlab/search?query=${encodeURIComponent(q)}`, 'external-link']],
-  });
-  $('#a-body').innerHTML = groups.length
-    ? groups.map((g) => `
-        <section class="s-group">
-          <h2>${esc(g.heading)}</h2>
-          <div class="s-grid">
-            ${g.items.map((a) => `<a class="s-item" href="${esc(rewriteHref(a.getAttribute('href')))}">${esc(a.textContent.trim())}</a>`).join('')}
-          </div>
-        </section>`).join('')
-    : `<div class="a-empty"><p class="lead">Nothing matched “${esc(q)}”.</p></div>`;
-  $('#a-body').classList.add('loaded', 'is-search');
-}
 
 /* ---------------- Router ---------------- */
-const params = new URLSearchParams(location.search);
+function showError(name, err) {
+  setHero({ title: name || 'Something went wrong', meta: 'This page could not be loaded.' });
+  $('#a-body').innerHTML = `<div class="a-empty"><p class="lead">${esc(err.message || String(err))}</p><p class="mt-s">${link('Back to the home page', 'arrow-left', './')}</p></div>`;
+  icons();
+}
 const q = params.get('search');
 const name = params.get('p');
-if (q && !LIVE) location.replace(`${ORIGIN}/nlab/search?query=${encodeURIComponent(q)}`); // static build: search on nLab
-else if (q) renderSearch(q).catch((e) => showError(`Search: ${q}`, e));
+if (q) renderSearch(q).catch((e) => showError(`Search: ${q}`, e));
+else if (params.has('recent')) renderRecent().catch((e) => showError('Recent changes', e));
+else if (params.has('all')) renderAll().catch((e) => showError('All pages', e));
+else if (params.has('write')) renderWrite();
 else if (!name || name === 'HomePage') location.replace('./');
-else renderArticle(name).catch((e) => {
-  // Static build: pages outside the snapshot open on the live nLab
-  if (e instanceof NotInSnapshot) location.replace(liveUrl(e.page) + location.hash);
-  else showError(name, e);
-});
+else renderArticle(name).catch((e) => showError(name, e));

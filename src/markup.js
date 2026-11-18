@@ -31,12 +31,25 @@ function itexToKatex(tex) {
     out = `${out.slice(0, i)}\\begin{array}{${'c'.repeat(cols)}}${body}\\end{array}${out.slice(j + 1)}`;
   }
   return out
+    .replace(/\\label\{[^}]*\}/g, '').replace(/\\arrayopts\{(?:[^{}]|\{[^{}]*\})*\}/g, '')
     .replace(/\\coloneq(?!q)/g, '\\coloneqq')
     .replace(/\\tensor\b/g, '\\otimes')
     .replace(/\\mathbf\{\\(alpha|beta|gamma|delta|phi|psi|omega|Omega|Gamma|Delta|Phi|Psi)\}/g, '\\boldsymbol{\\$1}');
 }
 
-const MACROS = { '\\N': '\\mathbb{N}', '\\Z': '\\mathbb{Z}', '\\Q': '\\mathbb{Q}', '\\R': '\\mathbb{R}', '\\C': '\\mathbb{C}', '\\Set': '\\mathrm{Set}', '\\Grpd': '\\mathrm{Grpd}' };
+// itex / nLab commands that KaTeX doesn't know (found by scanning all nLab formulas)
+const MACROS = {
+  '\\N': '\\mathbb{N}', '\\Z': '\\mathbb{Z}', '\\Q': '\\mathbb{Q}', '\\R': '\\mathbb{R}', '\\C': '\\mathbb{C}',
+  '\\Set': '\\mathrm{Set}', '\\Grpd': '\\mathrm{Grpd}', '\\Cat': '\\mathrm{Cat}', '\\Top': '\\mathrm{Top}', '\\Vect': '\\mathrm{Vect}',
+  '\\Simp': '\\mathrm{Simp}', '\\Sm': '\\mathrm{Sm}', '\\GL': '\\mathrm{GL}', '\\Hom': '\\mathrm{Hom}',
+  '\\underoverset': '\\underset{#1}{\\overset{#2}{#3}}', '\\sslash': '\\mathbin{/\\mkern-6mu/}',
+  '\\op': '\\mathrm{op}', '\\esh': '\\int', '\\parr': '\\mathbin{\\text{⅋}}', '\\invamp': '\\mathbin{\\text{⅋}}',
+  '\\id': '\\mathrm{id}', '\\Id': '\\mathrm{Id}', '\\widebar': '\\overline{#1}', '\\im': '\\mathrm{im}',
+  '\\colim': '\\operatorname*{colim}', '\\qed': '\\blacksquare', '\\ess': '\\mathrm{ess}', '\\dom': '\\mathrm{dom}',
+  '\\infinity': '\\infty', '\\tr': '\\mathrm{tr}', '\\Vee': '\\bigvee', '\\bottom': '\\bot', '\\Del': '\\nabla',
+  '\\root': '\\sqrt[#1]{#2}', '\\vol': '\\mathrm{vol}', '\\arrayopts': '', '\\cod': '\\mathrm{cod}', '\\Ker': '\\mathrm{Ker}',
+  '\\coker': '\\mathrm{coker}', '\\Aut': '\\mathrm{Aut}', '\\End': '\\mathrm{End}', '\\Spec': '\\mathrm{Spec}',
+};
 const renderMath = (tex, displayMode) => {
   try {
     return katex.renderToString(itexToKatex(tex.trim()), { displayMode, throwOnError: false, strict: 'ignore', trust: false, macros: { ...MACROS } });
@@ -54,24 +67,80 @@ function ial(attr) {
   return { classes, id };
 }
 
-export function renderSource(src) {
+// LaTeX-style environments → nLab blocks: \begin{theorem} … \end{theorem}
+const ENV_CLASS = { definition: 'defn', defn: 'defn', proposition: 'prop', prop: 'prop', theorem: 'theorem', lemma: 'lemma', corollary: 'cor', example: 'example', remark: 'remark', proof: 'proof' };
+const ENV_LABEL = { defn: 'Definition', prop: 'Proposition', theorem: 'Theorem', lemma: 'Lemma', cor: 'Corollary', example: 'Example', remark: 'Remark', proof: 'Proof' };
+function latexEnvs(s) {
+  return s
+    .replace(/^[ \t]*\\begin\{(definition|defn|proposition|prop|theorem|lemma|corollary|example|remark|proof)\}(?:\[([^\]\n]*)\])?[ \t]*$/gm, (_, env, title) => {
+      const cls = ENV_CLASS[env];
+      const head = `###### ${ENV_LABEL[cls]}${title ? ` (${title})` : ''}`;
+      return cls === 'proof' ? `+-- {: .proof}\n${head}\n` : `+-- {: .num_${cls}}\n${head}\n`;
+    })
+    .replace(/^[ \t]*\\end\{(definition|defn|proposition|prop|theorem|lemma|corollary|example|remark|proof)\}[ \t]*$/gm, '\n=--');
+}
+
+// Replace [[!include page]] by that page's source (two levels deep).
+export async function expandIncludes(src, getSource, depth = 2) {
+  const re = /^[ \t]*\[\[!include\s+([^\]|]+?)\s*\]\][ \t]*$/gm;
+  const names = [...new Set([...src.matchAll(re)].map((m) => m[1]))];
+  if (!names.length || depth <= 0) return src;
+  const got = new Map(await Promise.all(names.map(async (n) => {
+    try { return [n, await expandIncludes((await getSource(n)).replace(/^\s*\[\[!redirects [^\]]*\]\]\s*$/gm, ''), getSource, depth - 1)]; } catch { return [n, null]; }
+  })));
+  return src.replace(re, (line, n) => got.get(n) ?? line);
+}
+
+// The source of the context sidebar (`+-- {: .rightHandSide} … =--`), if any
+export function contextSource(src) {
+  const lines = src.replace(/\r\n?/g, '\n').split('\n');
+  const start = lines.findIndex((l) => /^\s*\+--\s*\{:?[^}]*\.rightHandSide/.test(l));
+  if (start < 0) return '';
+  let depth = 0;
+  for (let k = start; k < lines.length; k++) {
+    if (/^\s*\+--/.test(lines[k])) depth++;
+    else if (/^\s*=--\s*$/.test(lines[k]) && --depth === 0) return lines.slice(start + 1, k).join('\n');
+  }
+  return '';
+}
+
+/**
+ * Render nLab source to HTML.
+ *   context: true keeps `.hide` blocks (used for the context sidebar)
+ * Inline math keeps its TeX in data-tex, wiki links their target in data-wiki,
+ * so the visual editor can turn the HTML back into source.
+ */
+export function renderSource(src, { context = false } = {}) {
   const math = newStore('m');
   const links = newStore('l');
-  let s = src.replace(/\r\n?/g, '\n');
+  let s = latexEnvs(src.replace(/\r\n?/g, '\n'));
 
   // 1. Math first, so nothing below touches TeX. Order: display, then inline.
-  s = s.replace(/\$\$([\s\S]+?)\$\$/g, (_, t) => `${ph(math, `<div class="eq">${renderMath(t, true)}</div>`)}`);
-  s = s.replace(/\\\[([\s\S]+?)\\\]/g, (_, t) => `${ph(math, `<div class="eq">${renderMath(t, true)}</div>`)}`);
-  s = s.replace(/\\begin\{(equation\*?|align\*?)\}([\s\S]+?)\\end\{\1\}/g, (_, env, t) =>
-    `${ph(math, `<div class="eq">${renderMath(env.startsWith('align') ? `\\begin{aligned}${t}\\end{aligned}` : t, true)}</div>`)}`);
-  s = s.replace(/(^|[^\\$])\$(?!\s)((?:\\\$|[^$\n])+?)\$/g, (_, pre, t) => pre + ph(math, renderMath(t, false)));
+  const display = (t) => ph(math, `<div class="eq" data-tex="${esc(t.trim())}">${renderMath(t, true)}</div>`);
+  s = s.replace(/\$\$([\s\S]+?)\$\$/g, (_, t) => display(t));
+  s = s.replace(/\\\[([\s\S]+?)\\\]/g, (_, t) => display(t));
+  s = s.replace(/\\begin\{(equation\*?|align\*?)\}([\s\S]+?)\\end\{\1\}/g, (_, env, t) => display(env.startsWith('align') ? `\\begin{aligned}${t}\\end{aligned}` : t));
+  s = s.replace(/(^|[^\\$])\$(?!\s)((?:\\\$|[^$\n])+?)\$/g, (_, pre, t) => pre + ph(math, `<span class="m" data-tex="${esc(t)}">${renderMath(t, false)}</span>`));
+
+  // Text-mode LaTeX (outside math): layout commands are dropped, formatting commands applied
+  s = s.replace(/^[ \t]*\\(tableofcontents|maketitle|linebreak|newline|newpage|clearpage|noindent|par|medskip|bigskip|smallskip|vfill|hfill|centering)\b[ \t]*$/gm, '');
+  s = s.replace(/\\(vspace|hspace)\*?\{[^}]*\}/g, '');
+  s = s.replace(/\\(linebreak|newline)\b|\\\\(?=\s*$)/gm, '<br>');
+  s = s.replace(/\\(noindent|medskip|bigskip|smallskip|par)\b\s*/g, '');
+  s = s.replace(/\\(emph|textit)\{([^{}]*)\}/g, '_$2_');
+  s = s.replace(/\\textbf\{([^{}]*)\}/g, '**$1**');
+  s = s.replace(/\\texttt\{([^{}]*)\}/g, '`$1`');
+  s = s.replace(/\\(?:textrm|text|mbox)\{([^{}]*)\}/g, '$1');
+
+  // \ref{label} outside math → a link that shows the referenced environment's number
+  s = s.replace(/\\ref\{([\w-]+)\}/g, (_, id) => ph(links, `<a class="ref" href="#${esc(id)}" data-ref="${esc(id)}">${esc(id)}</a>`));
 
   // 2. Wiki links and directives
   s = s.replace(/^\s*\[\[!redirects [^\]]*\]\]\s*$/gm, '');
   s = s.replace(/\[\[!include ([^\]|]+)\]\]/g, (_, p) => ph(links, `<p class="included">Included from <a href="${esc(pageUrl(p.trim()))}">${esc(p.trim())}</a></p>`));
   s = s.replace(/\[\[([^\]|]+?)(?:\|([^\]]+))?\]\]/g, (_, target, text) => {
     const [name, anchor] = target.trim().split('#');
-    return ph(links, `<a href="${esc(pageUrl(name))}${anchor ? `#${esc(anchor)}` : ''}">${esc((text || target).trim())}</a>`);
+    return ph(links, `<a href="${esc(pageUrl(name))}${anchor ? `#${esc(anchor)}` : ''}" data-wiki="${esc(target.trim())}">${esc((text || target).trim())}</a>`);
   });
 
   // 3. Line-level structure: +-- blocks, {#id} anchors, tables of contents
@@ -80,11 +149,11 @@ export function renderSource(src) {
   const stack = [];
   let skip = 0; // depth inside a block we drop (the context sidebar)
   for (let k = 0; k < lines.length; k++) {
-    const line = lines[k];
+    let line = lines[k];
     const open = line.match(/^\s*\+--\s*(\{:?([^}]*)\})?\s*$/);
     if (open) {
       const { classes, id } = ial(open[2] || '');
-      const drop = skip > 0 || classes.includes('rightHandSide') || classes.includes('hide');
+      const drop = skip > 0 || classes.includes('rightHandSide') || (!context && classes.includes('hide'));
       stack.push(drop);
       if (drop) { skip++; continue; }
       out.push('', `<div${classes.length ? ` class="${classes.join(' ')}"` : ''}${id ? ` id="${id}"` : ''}>`, '');
@@ -103,25 +172,36 @@ export function renderSource(src) {
       // attach to the preceding heading, otherwise leave an anchor
       let p = out.length - 1;
       while (p >= 0 && !out[p].trim()) p--;
-      if (p >= 0 && /^#{1,6}\s/.test(out[p])) out[p] += ` \uE002${anchor[1]}\uE003`;
+      if (p >= 0 && /^#{1,6}\s/.test(out[p])) out[p] += ` ${anchor[1]}`;
       else out.push(`<a id="${anchor[1]}"></a>`);
       continue;
     }
     if (/^\s*\{:[^}]*\}\s*$/.test(line)) continue; // other Maruku attribute lists
-    // `## Heading ##` and `## Heading {#id}`
-    out.push(line.replace(/^(#{1,6}\s.*?)\s*\{#([\w-]+)\}\s*$/, '$1 \uE002$2\uE003').replace(/^(#{1,6}\s.*?)\s+#+\s*$/, '$1'));
+    line = line.replace(/^(#{1,6})(?=[^#\s])/, '$1 '); // "###Context###"
+    line = line.replace(/^(#{1,6}\s.*?)\s*\{#([\w-]+)\}\s*$/, '$1 $2').replace(/^(#{1,6}\s.*?)\s*#+\s*$/, '$1');
+    line = line.replace(/\{#([\w-]+)\}/g, '<a id="$1"></a>'); // inline anchors, e.g. in reference lists
+    out.push(line);
   }
 
   // 4. Markdown, then restore placeholders and heading ids
   let html = md.render(out.join('\n'));
   html = html.replace(new RegExp(`<p>\\s*(${A}[ml]\\d+${Z})\\s*</p>`, 'g'), '$1'); // display math / includes not wrapped in <p>
   html = html.replace(/<(h[1-6])>([\s\S]*?)<\/\1>/g, (_, h, inner) => {
-    const m = inner.match(/\s*\uE002([\w-]+)\uE003\s*$/);
-    const text = inner.replace(/\s*\uE002[\w-]+\uE003\s*$/, '');
-    return `<${h} id="${m ? m[1] : slug(text)}">${text}</${h}>`;
+    const m = inner.match(/\s*([\w-]+)\s*$/);
+    const text = inner.replace(/\s*[\w-]+\s*$/, '');
+    return `<${h} id="${m ? m[1] : slug(text)}"${m ? ` data-anchor="${m[1]}"` : ''}>${text}</${h}>`;
   });
   html = unph(unph(html, links), math);
   return html;
+}
+
+// After environments are numbered: show "3" instead of the label in \ref links
+export function resolveRefs(root) {
+  root.querySelectorAll('a.ref[data-ref]').forEach((a) => {
+    const t = root.querySelector(`[id="${CSS.escape(a.dataset.ref)}"]`);
+    const no = t?.querySelector(':scope > h6')?.textContent.match(/\d+/)?.[0];
+    a.textContent = no || '↑';
+  });
 }
 
 /* ---------- Line diff (for "Changes") ---------- */

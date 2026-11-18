@@ -5,6 +5,9 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Cpath d=%22M16 3c5 6 5 14 0 26C11 17 11 9 16 3z%22 fill=%22%23193c78%22/%3E%3Cpath d=%22M4 12c7-1 13 3 12 17C9 25 4 19 4 12z%22 fill=%22%23226622%22/%3E%3Cpath d=%22M28 12c-7-1-13 3-12 17 7-4 12-10 12-17z%22 fill=%22%23a41e32%22/%3E%3C/svg%3E">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>nLab</title>
+<style>/* critical: no flash of unstyled content */.brand-mark{width:28px;height:28px}html:not(.ready) body{opacity:0}html.ready body{opacity:1;transition:opacity .2s ease}</style>
+<noscript><style>html body{opacity:1}</style></noscript>
+<script>setTimeout(function(){document.documentElement.classList.add('ready')},2500)</script>
 </head>
 <body id="top" class="article-page">
 <div class="progress"></div>
@@ -12,7 +15,7 @@
 <header class="nav">
   <div class="wrap">
     <a class="brand" href="./" aria-label="nLab home">
-      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+      <svg class="brand-mark" width="28" height="28" viewBox="0 0 32 32" aria-hidden="true">
         <path d="M16 3c5 6 5 14 0 26C11 17 11 9 16 3z" fill="#193c78"/>
         <path d="M4 12c7-1 13 3 12 17C9 25 4 19 4 12z" fill="#226622"/>
         <path d="M28 12c-7-1-13 3-12 17 7-4 12-10 12-17z" fill="#a41e32"/>
@@ -20,10 +23,9 @@
       nLab <small>redesign</small>
     </a>
     <nav class="nav-links" aria-label="Main">
-      <a href="./#new"><i data-lucide="newspaper"></i><span>What’s new</span></a>
       <a href="./#browse"><i data-lucide="library"></i><span>Browse</span></a>
-      <a href="./#contribute"><i data-lucide="pen-line"></i><span>Contribute</span></a>
-      <a href="./#about"><i data-lucide="book-open"></i><span>About</span></a>
+      <a href="page.html?recent"><i data-lucide="history"></i><span>Recent</span></a>
+      <a href="forum.html"><i data-lucide="messages-square"></i><span>Forum</span></a>
       <a href="cqts.html"><i data-lucide="orbit"></i><span>CQTS</span></a>
     </nav>
     <form class="nav-search" role="search">
@@ -31,6 +33,8 @@
       <input type="search" placeholder="Search" aria-label="Search the nLab">
       <kbd>/</kbd>
     </form>
+    <a class="nav-write" href="page.html?write"><i data-lucide="pen-line"></i><span>Write</span></a>
+    <div class="nav-account"></div>
   </div>
 </header>
 
@@ -44,72 +48,125 @@
   </div>
 </section>
 
-<!-- Shown when this browser holds an edited version of the page -->
+<!-- Shown when this browser holds an unpublished draft of the page -->
 <div class="draft-bar" id="draft-bar" hidden>
   <div class="wrap draft-inner">
-    <i data-lucide="info"></i>
-    <p><b>You are viewing your edited version.</b> <span id="draft-when"></span> It is saved in this browser only and not yet on the nLab.</p>
+    <i data-lucide="pencil"></i>
+    <p><b id="draft-title">You have an unpublished draft of this page.</b> <span id="draft-when"></span></p>
     <div class="draft-actions">
       <button type="button" class="tbtn" data-act="toggle-published"><i data-lucide="eye"></i><span>Show published</span></button>
-      <button type="button" class="tbtn" data-act="edit"><i data-lucide="pencil"></i><span>Continue editing</span></button>
-      <button type="button" class="tbtn" data-act="discard"><i data-lucide="rotate-ccw"></i><span>Discard</span></button>
-      <button type="button" class="tbtn primary" data-act="submit"><i data-lucide="upload"></i><span>Submit to nLab</span></button>
+      <button type="button" class="tbtn primary" data-act="edit"><i data-lucide="pencil"></i><span>Continue editing</span></button>
     </div>
   </div>
 </div>
 
-<!-- Editor -->
-<section class="editor" id="editor" hidden aria-label="Edit page">
-  <div class="wrap ed-wrap">
-    <div class="ed-top">
-      <div class="ed-tabs" role="tablist" aria-label="Editor view">
-        <button role="tab" type="button" data-view="split" aria-selected="true"><i data-lucide="columns-2"></i><span>Source &amp; preview</span></button>
-        <button role="tab" type="button" data-view="write" aria-selected="false"><i data-lucide="file-code"></i><span>Source</span></button>
-        <button role="tab" type="button" data-view="preview" aria-selected="false"><i data-lucide="eye"></i><span>Preview</span></button>
-        <button role="tab" type="button" data-view="changes" aria-selected="false"><i data-lucide="git-compare"></i><span>Changes</span><em id="ed-count"></em></button>
+<!-- ================= Editing workspace ================= -->
+<div class="ws" id="ws" hidden data-mode="visual">
+  <header class="ws-bar">
+    <div class="ws-left">
+      <button class="ws-icon" type="button" data-ws="close" title="Back to the page (your draft is kept)" aria-label="Back to the page"><i data-lucide="arrow-left"></i></button>
+      <div class="ws-title">
+        <span class="ws-kicker">Editing <em id="ws-new" hidden>· new page</em></span>
+        <b id="ws-name">Page</b>
       </div>
-      <div class="ed-toolbar" role="toolbar" aria-label="Formatting">
-        <button type="button" data-fmt="bold" title="Bold (⌘B)"><i data-lucide="bold"></i></button>
-        <button type="button" data-fmt="italic" title="Italic (⌘I)"><i data-lucide="italic"></i></button>
-        <button type="button" data-fmt="heading" title="Section heading"><i data-lucide="heading-2"></i></button>
-        <button type="button" data-fmt="link" title="Link to an nLab page [[…]]"><i data-lucide="link"></i></button>
-        <button type="button" data-fmt="list" title="Bulleted list"><i data-lucide="list"></i></button>
-        <button type="button" data-fmt="olist" title="Numbered list"><i data-lucide="list-ordered"></i></button>
-        <span class="sep"></span>
-        <button type="button" data-fmt="math" title="Inline math $…$ (⌘M)"><i data-lucide="radical"></i></button>
-        <button type="button" data-fmt="display" title="Displayed equation $$…$$"><i data-lucide="square-function"></i></button>
-        <button type="button" data-fmt="code" title="Code"><i data-lucide="code"></i></button>
-        <span class="sep"></span>
-        <select data-fmt="env" aria-label="Insert environment">
-          <option value="">Environment…</option>
-          <option value="defn|Definition">Definition</option>
-          <option value="prop|Proposition">Proposition</option>
-          <option value="theorem|Theorem">Theorem</option>
-          <option value="lemma|Lemma">Lemma</option>
-          <option value="cor|Corollary">Corollary</option>
-          <option value="example|Example">Example</option>
-          <option value="remark|Remark">Remark</option>
-          <option value="proof|Proof">Proof</option>
-        </select>
-      </div>
+      <span class="ws-save" id="ws-save" aria-live="polite"></span>
     </div>
-    <div class="ed-panes" data-view="split">
-      <div class="ed-pane ed-src">
-        <textarea id="ed-text" spellcheck="false" aria-label="Page source (Markdown and LaTeX)"></textarea>
-      </div>
-      <div class="ed-pane ed-preview a-body" id="ed-preview" aria-live="polite"></div>
-      <div class="ed-pane ed-diff" id="ed-diff"></div>
+    <div class="ws-modes" role="tablist" aria-label="How to write">
+      <button type="button" role="tab" data-ws="mode" data-mode="visual" aria-selected="true" title="Type into the page as normal text"><i data-lucide="type"></i><span>Visual</span></button>
+      <button type="button" role="tab" data-ws="mode" data-mode="latex" aria-selected="false" title="Edit the LaTeX / Markdown source with suggestions"><i data-lucide="file-code"></i><span>LaTeX</span></button>
     </div>
-    <div class="ed-foot">
-      <label class="ed-summary"><span>Edit summary</span><input id="ed-summary" type="text" placeholder="Briefly describe your change, e.g. “added reference to Hopf (1931)”" maxlength="200"></label>
-      <p class="ed-hint" id="ed-status">Markdown with LaTeX: <code>$x$</code> inline, <code>$$…$$</code> displayed, <code>[[page name]]</code> links. ⌘S saves.</p>
-      <div class="ed-buttons">
-        <button type="button" class="tbtn" data-act="cancel"><i data-lucide="x"></i><span>Cancel</span></button>
-        <button type="button" class="tbtn primary" data-act="save"><i data-lucide="save"></i><span>Save changes</span></button>
-      </div>
+    <div class="ws-right">
+      <button type="button" class="tbtn" data-ws="changes" aria-pressed="false"><i data-lucide="git-compare"></i><span>Changes</span><em id="ws-count"></em></button>
+      <button type="button" class="tbtn primary" data-ws="publish"><i data-lucide="cloud-upload"></i><span>Publish</span></button>
     </div>
+  </header>
+
+  <div class="ws-tools" id="ws-tools" role="toolbar" aria-label="Formatting">
+    <div class="tg">
+      <button type="button" data-cmd="undo" title="Undo (⌘Z)"><i data-lucide="undo-2"></i></button>
+      <button type="button" data-cmd="redo" title="Redo (⇧⌘Z)"><i data-lucide="redo-2"></i></button>
+    </div>
+    <div class="tg vis-only">
+      <button type="button" class="menu-btn" data-menu="block" aria-haspopup="menu" title="Paragraph style"><span id="ws-block-label">Paragraph</span><i data-lucide="chevron-down"></i></button>
+    </div>
+    <div class="tg tex-only">
+      <button type="button" data-cmd="heading" title="Section heading (##)"><i data-lucide="heading-2"></i></button>
+    </div>
+    <div class="tg">
+      <button type="button" data-cmd="bold" title="Bold (⌘B)"><i data-lucide="bold"></i></button>
+      <button type="button" data-cmd="italic" title="Italic (⌘I)"><i data-lucide="italic"></i></button>
+      <button type="button" data-cmd="code" title="Code"><i data-lucide="code"></i></button>
+      <button type="button" data-cmd="link" title="Link to an nLab page (⌘K)"><i data-lucide="link"></i></button>
+    </div>
+    <div class="tg">
+      <button type="button" data-cmd="list" title="Bulleted list"><i data-lucide="list"></i></button>
+      <button type="button" data-cmd="olist" title="Numbered list"><i data-lucide="list-ordered"></i></button>
+      <button type="button" data-cmd="quote" title="Quotation"><i data-lucide="text-quote"></i></button>
+    </div>
+    <div class="tg">
+      <button type="button" class="wide" data-cmd="math" title="Inline formula (⌘M)"><i data-lucide="radical"></i><span>Formula</span></button>
+      <button type="button" class="wide" data-cmd="display" title="Displayed equation"><i data-lucide="square-function"></i><span>Equation</span></button>
+      <button type="button" data-cmd="symbols" title="Symbols"><i data-lucide="omega"></i></button>
+    </div>
+    <div class="tg">
+      <button type="button" class="menu-btn" data-menu="env" aria-haspopup="menu" title="Insert a theorem-like environment"><i data-lucide="plus"></i><span>Environment</span><i data-lucide="chevron-down"></i></button>
+    </div>
+    <span class="tg-spacer"></span>
+    <button type="button" class="ws-help-btn" data-ws="help" title="How editing works"><i data-lucide="circle-help"></i></button>
   </div>
-</section>
+
+  <div class="ws-main">
+    <aside class="ws-outline" aria-label="Outline">
+      <p class="ws-label">Outline</p>
+      <nav id="ws-outline"></nav>
+    </aside>
+
+    <div class="ws-stage">
+      <div class="ws-help" id="ws-help" hidden>
+        <div><b>Visual</b> — click anywhere and type. Start a line with <kbd>## </kbd> for a section, <kbd>* </kbd> for a list. Type <kbd>$\pi_1(X)$</kbd> and it turns into a formula; <kbd>[[topos]]</kbd> becomes a link. Theorems, equations and tables are cards: click one to edit its LaTeX.</div>
+        <div><b>LaTeX</b> — the page source as stored on the nLab (Markdown + LaTeX). Suggestions appear as you type <kbd>\</kbd>, <kbd>[[</kbd> or <kbd>\begin{</kbd>; <kbd>Tab</kbd>/<kbd>Enter</kbd> accepts.</div>
+        <div><b>Saving</b> — drafts save automatically in this browser. <b>Publish</b> sends the page to the nLab.</div>
+      </div>
+      <section class="ws-visual" id="ws-visual">
+        <article class="ws-paper"><div id="ws-visual-doc"></div></article>
+      </section>
+      <section class="ws-latex" id="ws-latex" hidden>
+        <div class="ws-src" id="ws-cm"></div>
+        <div class="ws-prev-wrap">
+          <div class="pdf-bar"><span class="ws-label">PDF preview</span><span class="pdf-count" id="pdf-count"></span>
+            <button type="button" class="tbtn sm" data-ws="pdf"><i data-lucide="file-text"></i><span>Download PDF</span></button></div>
+          <div class="ws-prev" id="ws-prev"></div>
+        </div>
+      </section>
+    </div>
+
+    <aside class="ws-drawer" id="ws-drawer" hidden aria-label="Changes">
+      <header><b>Changes</b><button type="button" class="ws-icon" data-ws="changes" aria-label="Close"><i data-lucide="x"></i></button></header>
+      <p id="ws-diff-sum"></p>
+      <div class="ws-diff" id="ws-diff"></div>
+      <button type="button" class="tbtn danger" data-ws="discard"><i data-lucide="trash-2"></i><span>Discard all changes</span></button>
+    </aside>
+  </div>
+
+  <footer class="ws-status"><span id="ws-words"></span><span id="ws-hint"></span></footer>
+</div>
+
+<dialog class="modal" id="pub-dlg" aria-labelledby="pub-title">
+  <form method="dialog">
+    <h2 id="pub-title">Publish to the nLab</h2>
+    <p class="pub-sum" id="pub-sum"></p>
+    <p>The nLab stores every page on ncatlab.org. Publishing takes three short steps:</p>
+    <ol class="pub-steps">
+      <li><b>Copy your page source.</b><button type="button" class="tbtn" id="pub-copy"><i data-lucide="copy"></i><span>Copy page source</span></button></li>
+      <li><b>Paste it into the nLab editor and press “Submit”.</b><a class="tbtn" id="pub-open" target="_blank" rel="noopener"><i data-lucide="external-link"></i><span>Open the nLab editor</span></a></li>
+      <li><b>For anything beyond a typo, say what you changed in the forum.</b><a class="tbtn" id="pub-forum"><i data-lucide="messages-square"></i><span>Start a forum topic</span></a></li>
+    </ol>
+    <div class="modal-actions">
+      <button class="tbtn" value="cancel">Not yet</button>
+      <button class="tbtn primary" type="button" id="pub-done"><i data-lucide="check"></i><span>I’ve published it</span></button>
+    </div>
+  </form>
+</dialog>
 
 <!-- Article body -->
 <div class="wrap a-layout" id="a-layout">
@@ -132,19 +189,18 @@
   <div class="wrap">
     <div class="foot-cols">
       <div class="foot-about">
-        <a class="brand" href="./"><svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3c5 6 5 14 0 26C11 17 11 9 16 3z" fill="#6b8fd6"/><path d="M4 12c7-1 13 3 12 17C9 25 4 19 4 12z" fill="#5fae5f"/><path d="M28 12c-7-1-13 3-12 17 7-4 12-10 12-17z" fill="#e0606f"/></svg>nLab</a>
-        <p>Collaborative work on mathematics, physics and philosophy, from the higher structures point of view.</p>
+        <a class="brand" href="./"><svg class="brand-mark" width="28" height="28" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3c5 6 5 14 0 26C11 17 11 9 16 3z" fill="#6b8fd6"/><path d="M4 12c7-1 13 3 12 17C9 25 4 19 4 12z" fill="#5fae5f"/><path d="M28 12c-7-1-13 3-12 17 7-4 12-10 12-17z" fill="#e0606f"/></svg>nLab</a>
+        <p>The open wiki for mathematics, physics and philosophy. Read it, improve it.</p>
       </div>
-      <div><h6>Content</h6><a href="page.html?p=mathematics"><i data-lucide="sigma"></i>Mathematics</a><a href="page.html?p=physics"><i data-lucide="atom"></i>Physics</a><a href="page.html?p=philosophy"><i data-lucide="lightbulb"></i>Philosophy</a></div>
-      <div><h6>Resources</h6><a href="page.html?p=math+resources">Mathematics</a><a href="page.html?p=physics+resources">Physics</a><a href="page.html?p=philosophy+resources">Philosophy</a></div>
-      <div><h6>Community</h6><a href="https://nforum.ncatlab.org/"><i data-lucide="messages-square"></i>nForum</a><a href="https://ncatlab.org/nlab/latest_revisions"><i data-lucide="history"></i>Latest changes</a><a href="page.html?p=HowTo"><i data-lucide="book-open"></i>HowTo</a></div>
+      <div><h6>Read</h6><a href="page.html?p=mathematics">Mathematics</a><a href="page.html?p=physics">Physics</a><a href="page.html?p=philosophy">Philosophy</a><a href="page.html?all">All pages</a></div>
+      <div><h6>Contribute</h6><a href="./#contribute">How to contribute</a><a href="page.html?p=HowTo">HowTo</a><a href="page.html?p=Sandbox&amp;edit">Sandbox</a></div>
+      <div><h6>Community</h6><a href="forum.html">Forum</a><a href="page.html?recent">Recent changes</a><a href="forum.html?new">Start a discussion</a></div>
       <div><h6>CQTS</h6><a href="cqts.html">Overview</a><a href="cqts.html#Symposium2026">Symposium 2026</a><a href="cqts.html#colloquium">Colloquium</a></div>
     </div>
-    <div class="foot-base"><span id="foot-source">Article content from ncatlab.org.</span><span>Redesign prototype — not the official nLab.</span></div>
+    <div class="foot-base"><span id="foot-source">Content from the nLab (via its public content mirror) and the nForum.</span><span>Redesign prototype — not the official nLab.</span></div>
   </div>
 </footer>
 
-<div class="proto-note">Prototype</div>
 <script type="module" src="/src/page.js"></script>
 </body>
 </html>

@@ -1,90 +1,81 @@
-// Build-time snapshot of nLab content for the static (GitHub Pages) build.
-// ncatlab.org sends no CORS headers, so the browser cannot fetch it directly;
-// instead this script runs before `vite build` and writes public/snapshot/.
+// Build-time snapshot of the nForum for the static (GitHub Pages) build.
+// The nForum is a Zulip server with public channels: its /json API answers anonymous requests
+// but sends no CORS headers, so the browser can't read it from another site. In dev the Vite
+// proxy reads it live; for the static build this script saves recent messages of every public
+// channel into public/snapshot/forum.json. (Page content comes from the nLab content mirror;
+// see scripts/mirror-index.mjs.)
 //
 //   node scripts/snapshot.mjs
-//
-// It fetches every nLab page the site links to (plus the "Surprise me" pool)
-// and the latest-revisions list. Requests are sequential and spaced out.
-import { readFile, writeFile, mkdir, rm } from 'node:fs/promises';
+import { writeFile, mkdir, rm } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 
-const ORIGIN = 'https://ncatlab.org';
+const FORUM = 'https://nforum.ncatlab.org';
 const OUT = new URL('../public/snapshot/', import.meta.url);
-const UA = { 'User-Agent': 'nlab-redesign-prototype (static snapshot; GitHub Pages build)' };
-const DELAY_MS = 400;
+const UA = { 'User-Agent': 'nlab-redesign-prototype (static snapshot)' };
 
-const decodeName = (s) => decodeURIComponent(s.replace(/\+/g, ' '));
-const encodeName = (n) => encodeURIComponent(n).replace(/%20/g, '+');
-const decodeEntities = (s) => s.replace(/&(#x[\da-f]+|#\d+|lt|gt|amp|quot|apos|#39);/gi, (_, e) => (
-  e[0] === '#' ? String.fromCodePoint(e[1].toLowerCase() === 'x' ? parseInt(e.slice(2), 16) : +e.slice(1))
-    : { lt: '<', gt: '>', amp: '&', quot: '"', apos: "'" }[e.toLowerCase()]));
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const fileFor = (name) => {
-  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'page';
-  return `${slug}-${createHash('sha1').update(name).digest('hex').slice(0, 8)}.html`;
-};
-// Keep only what the viewer needs (#Content), dropping nLab's scripts and styles.
-const trim = (html) => {
-  const i = html.indexOf('<div id="Content"');
-  const j = html.lastIndexOf('</body>');
-  const body = i >= 0 ? html.slice(i, j > i ? j : undefined) : html;
-  return `<!DOCTYPE html><html><body>${body.replace(/<script[\s\S]*?<\/script>/gi, '')}</body></html>`;
-};
-
-async function get(url) {
+async function messages(narrow, num) {
+  const q = new URLSearchParams({ anchor: 'newest', num_before: String(num), num_after: '0', apply_markdown: 'true', narrow: JSON.stringify(narrow) });
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
-      const res = await fetch(url, { headers: UA, redirect: 'follow' });
-      if (res.ok) return res;
-      if (res.status === 404) return null;
+      const res = await fetch(`${FORUM}/json/messages?${q}`, { headers: UA });
+      if (res.ok) return (await res.json()).messages;
     } catch { /* retry */ }
-    await sleep(1500 * attempt);
+    await new Promise((r) => setTimeout(r, 1500 * attempt));
   }
-  return null;
+  return [];
 }
+const slim = (m) => ({
+  id: m.id, sender_id: m.sender_id, sender_full_name: m.sender_full_name, avatar_url: m.avatar_url,
+  content: m.content, timestamp: m.timestamp, subject: m.subject, stream_id: m.stream_id, display_recipient: m.display_recipient,
+  reactions: (m.reactions || []).map((r) => ({ emoji_name: r.emoji_name, emoji_code: r.emoji_code, user_id: r.user_id })),
+});
 
-// 1. Collect page names from the site sources
-const sources = await Promise.all(['../index.html', '../page.html', '../cqts.html', '../src/home.js'].map((p) => readFile(new URL(p, import.meta.url), 'utf8')));
-const names = new Set();
-for (const src of sources) for (const m of src.matchAll(/page\.html\?p=([^"'#&\s<]+)/g)) names.add(decodeName(m[1]));
-const pool = sources[2].match(/const surprise = \[([\s\S]*?)\];/);
-if (pool) for (const m of pool[1].matchAll(/'([^']+)'/g)) names.add(m[1]);
-
-await rm(OUT, { recursive: true, force: true });
-await mkdir(OUT, { recursive: true });
-
-// 2. Fetch pages
-const pages = {};
-let ok = 0;
-for (const name of [...names].sort()) {
-  const res = await get(`${ORIGIN}/nlab/show/${encodeName(name)}`);
-  await sleep(DELAY_MS);
-  if (!res) { console.warn(`  skip  ${name}`); continue; }
-  const m = new URL(res.url).pathname.match(/^\/nlab\/show\/(.+)$/);
-  const canonical = m ? decodeName(m[1]) : name;
-  const file = fileFor(canonical);
-  let entry = pages[canonical];
-  if (!entry) {
-    await writeFile(new URL(file, OUT), trim(await res.text()));
-    ok++;
-    entry = { file, canonical };
-    // Page source, for the editor
-    const src = await get(`${ORIGIN}/nlab/source/${encodeName(canonical)}`);
-    await sleep(DELAY_MS);
-    const ta = src && (await src.text()).match(/<textarea[^>]*id=.content.[^>]*>([\s\S]*?)<\/textarea>/);
-    if (ta) {
-      entry.source = file.replace(/\.html$/, '.md');
-      await writeFile(new URL(entry.source, OUT), decodeEntities(ta[1]).replace(/^\n/, ''));
+// 1. Discover the public channels from recent traffic
+const recent = await messages([{ operator: 'channels', operand: 'web-public' }], 1000);
+const channels = new Map();
+for (const m of recent) channels.set(m.stream_id, m.display_recipient);
+// 2. Recent history of each channel
+const out = [];
+for (const [id, name] of channels) {
+  const msgs = await messages([{ operator: 'channels', operand: 'web-public' }, { operator: 'channel', operand: id }], name === 'Latest Changes' ? 400 : 1200);
+  out.push({ id, name, messages: msgs.map(slim) });
+  console.log(`  ${name}: ${msgs.length} messages`);
+  await new Promise((r) => setTimeout(r, 400));
+}
+// 3. Write a small index (channels → topics) plus one file per topic, loaded on demand
+const DIR = new URL('forum/', OUT);
+await rm(DIR, { recursive: true, force: true });
+await mkdir(DIR, { recursive: true });
+const text = (html) => html.replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#39;|&quot;/g, "'").replace(/\s+/g, ' ').trim();
+const index = { fetchedAt: new Date().toISOString(), channels: [] };
+let files = 0;
+for (const ch of out) {
+  const topics = new Map();
+  for (const m of ch.messages) {
+    if (!topics.has(m.subject)) topics.set(m.subject, []);
+    topics.get(m.subject).push(m);
+  }
+  const list = [];
+  for (const [t, msgs] of topics) {
+    msgs.sort((a, b) => a.id - b.id);
+    const file = `t-${createHash('sha1').update(`${ch.id}/${t}`).digest('hex').slice(0, 10)}.json`;
+    await writeFile(new URL(file, DIR), JSON.stringify(msgs));
+    files++;
+    const last = msgs[msgs.length - 1];
+    const people = [...new Map(msgs.map((m) => [m.sender_id, { name: m.sender_full_name, avatar: m.avatar_url }])).values()];
+    // "Latest Changes" posts are edit announcements: <p>summary</p>… <p>author</p><p>diff, vN, current</p>
+    let edit;
+    if (ch.name === 'Latest Changes') {
+      const ps = [...last.content.matchAll(/<p>([\s\S]*?)<\/p>/g)].map((m) => m[1]);
+      const links = ps.pop() || '';
+      edit = { author: text(ps.pop() || ''), summary: text(ps.join(' ')).slice(0, 200), rev: (links.match(/>v(\d+)</) || [])[1] || '' };
     }
+    list.push({ t, file, n: msgs.length, ...(edit ? { edit } : {}), first: msgs[0].timestamp, last: last.timestamp, lastBy: last.sender_full_name,
+      excerpt: text(last.content).slice(0, 220), people: people.slice(0, 4), npeople: people.length });
   }
-  for (const key of [name, canonical]) { pages[key] = entry; pages[key.toLowerCase()] = entry; }
-  console.log(`  ok    ${name}${canonical !== name ? ` → ${canonical}` : ''}`);
+  list.sort((a, b) => b.last - a.last);
+  index.channels.push({ id: ch.id, name: ch.name, topics: list });
 }
-
-// 3. Latest revisions
-const latest = await get(`${ORIGIN}/nlab/latest_revisions`);
-if (latest) await writeFile(new URL('latest_revisions.html', OUT), trim(await latest.text()));
-
-await writeFile(new URL('index.json', OUT), JSON.stringify({ fetchedAt: new Date().toISOString(), pages }));
-console.log(`Snapshot: ${ok} pages, latest revisions ${latest ? 'ok' : 'missing'}.`);
+await writeFile(new URL('index.json', DIR), JSON.stringify(index));
+await writeFile(new URL('index.json', OUT), JSON.stringify({ fetchedAt: index.fetchedAt }));
+console.log(`Forum snapshot: ${out.length} channels, ${files} topics.`);

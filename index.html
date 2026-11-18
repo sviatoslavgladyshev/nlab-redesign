@@ -6,6 +6,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>nLab — mathematics, physics and philosophy</title>
 <meta name="description" content="A wiki for collaborative work on mathematics, physics, and philosophy — especially from the higher structures point of view. Redesign prototype.">
+<style>/* critical: no flash of unstyled content */.brand-mark{width:28px;height:28px}html:not(.ready) body{opacity:0}html.ready body{opacity:1;transition:opacity .2s ease}</style>
+<noscript><style>html body{opacity:1}</style></noscript>
+<script>setTimeout(function(){document.documentElement.classList.add('ready')},2500)</script>
 </head>
 <body id="top">
 <div class="progress"></div>
@@ -14,14 +17,13 @@
 <header class="nav">
   <div class="wrap">
     <a class="brand" href="./" aria-label="nLab home">
-      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3c5 6 5 14 0 26C11 17 11 9 16 3z" fill="#193c78"/><path d="M4 12c7-1 13 3 12 17C9 25 4 19 4 12z" fill="#226622"/><path d="M28 12c-7-1-13 3-12 17 7-4 12-10 12-17z" fill="#a41e32"/></svg>
+      <svg class="brand-mark" width="28" height="28" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3c5 6 5 14 0 26C11 17 11 9 16 3z" fill="#193c78"/><path d="M4 12c7-1 13 3 12 17C9 25 4 19 4 12z" fill="#226622"/><path d="M28 12c-7-1-13 3-12 17 7-4 12-10 12-17z" fill="#a41e32"/></svg>
       nLab <small>redesign</small>
     </a>
     <nav class="nav-links" aria-label="Main">
-      <a href="#new"><i data-lucide="newspaper"></i><span>What’s new</span></a>
       <a href="#browse"><i data-lucide="library"></i><span>Browse</span></a>
-      <a href="#contribute"><i data-lucide="pen-line"></i><span>Contribute</span></a>
-      <a href="#about"><i data-lucide="book-open"></i><span>About</span></a>
+      <a href="page.html?recent"><i data-lucide="history"></i><span>Recent</span></a>
+      <a href="forum.html"><i data-lucide="messages-square"></i><span>Forum</span></a>
       <a href="cqts.html"><i data-lucide="orbit"></i><span>CQTS</span></a>
     </nav>
     <form class="nav-search" role="search">
@@ -29,33 +31,85 @@
       <input type="search" placeholder="Search" aria-label="Search the nLab">
       <kbd>/</kbd>
     </form>
+    <a class="nav-write" href="page.html?write"><i data-lucide="pen-line"></i><span>Write</span></a>
+    <div class="nav-account"></div>
   </div>
 </header>
 
 <main>
-<!-- ================= HERO: one message, one action (search) ================= -->
-<section class="hero">
-  <div class="wrap hero-grid">
-    <div class="hero-copy">
-      <p class="kicker"><span class="kdot"></span>The nLab wiki</p>
-      <h1 class="title">Mathematics, physics &amp; philosophy — <em>linked.</em></h1>
-      <p class="lead">A collaborative wiki written by researchers, especially from the higher structures point of view. Free to read, cite and improve.</p>
-      <form class="big-search" role="search">
-        <i data-lucide="search"></i>
-        <input type="search" placeholder="Search the nLab, e.g. “adjoint functor”" aria-label="Search the nLab">
-        <button type="submit">Search</button>
-      </form>
-      <p class="popular"><span>Popular:</span>
-        <a href="page.html?p=category+theory">category theory</a>
-        <a href="page.html?p=homotopy+type+theory">homotopy type theory</a>
-        <a href="page.html?p=topos">topos</a>
-        <a href="page.html?p=adjoint+functor">adjoint functor</a>
-      </p>
+<!-- ================= HERO: one sentence, one search, two choices ================= -->
+<section class="hero hero-v3">
+  <div class="wrap hero-center">
+    <h1 class="title">The open wiki for mathematics, physics&nbsp;&amp;&nbsp;philosophy</h1>
+    <p class="lead">Written by researchers, free for everyone. Look up a concept, or write about one.</p>
+    <form class="big-search" role="search">
+      <i data-lucide="search"></i>
+      <input type="search" placeholder="Search 20,000 pages, e.g. “adjoint functor”" aria-label="Search the nLab">
+      <button type="submit">Search</button>
+    </form>
+    <div class="hero-choices">
+      <a class="tbtn primary" href="page.html?write"><i data-lucide="pen-line"></i><span>Write an article</span></a>
+      <a class="tbtn" href="#browse"><i data-lucide="library"></i><span>Browse by subject</span></a>
     </div>
-    <figure class="plate hero-plate">
-      <canvas class="kgraph" aria-label="An interactive diagram of nLab concepts and the links between them"></canvas>
-      <figcaption><b>Fig. 1</b><span>A fragment of the web of concepts. Drag to turn; click a concept to open it.</span></figcaption>
-    </figure>
+    <p class="hero-facts"><span class="stat-pages">20,000+</span> pages · anyone can edit · every change is public</p>
+  </div>
+</section>
+
+<!-- ================= §1 CONTRIBUTE: steps + a working editor ================= -->
+<section class="section" id="contribute">
+  <div class="wrap">
+    <header class="sec-head">
+      <span class="sec-no">§1</span>
+      <div><h2 class="h2">Contribute in three steps</h2><p class="sec-sub">The nLab grows because readers improve it. You don’t need an account to start a draft here.</p></div>
+      <a class="more" href="page.html?p=HowTo">Read the HowTo <i data-lucide="arrow-right"></i></a>
+    </header>
+
+    <div class="contrib">
+      <ol class="c-steps">
+        <li>
+          <span class="c-no">1</span>
+          <div>
+            <h3>Find or create a page</h3>
+            <p>Every concept deserves a page. Open one that exists, or name a new one.</p>
+            <form class="c-open" id="c-open">
+              <input type="text" placeholder="Page name, e.g. “Hopf fibration”" aria-label="Page name" autocomplete="off">
+              <button type="submit" class="tbtn primary"><i data-lucide="pencil"></i><span>Edit</span></button>
+            </form>
+          </div>
+        </li>
+        <li>
+          <span class="c-no">2</span>
+          <div>
+            <h3>Write the way you like</h3>
+            <p><b>Visual:</b> type into the page as normal text, with a formatting bar and a formula box.<br>
+               <b>LaTeX:</b> edit the source directly, with suggestions for <code>\commands</code>, <code>[[page links]]</code> and theorem environments.</p>
+          </div>
+        </li>
+        <li>
+          <span class="c-no">3</span>
+          <div>
+            <h3>Publish on the nLab</h3>
+            <p>Your draft is saved in your browser as you type. When it’s ready, send it to ncatlab.org and mention bigger changes in the <a href="forum.html">forum</a>.</p>
+          </div>
+        </li>
+      </ol>
+
+      <div class="try card" id="try">
+        <div class="try-head">
+          <p class="col-head"><i data-lucide="file-code"></i>Try it: LaTeX with suggestions</p>
+          <span class="try-hint">Type <kbd>\</kbd> for symbols, <kbd>[[</kbd> for pages</span>
+        </div>
+        <textarea id="try-src" spellcheck="false" aria-label="Try writing nLab source">The _Hopf fibration_ is a [[principal bundle]]
+$$
+  S^1 \hookrightarrow S^3 \to S^2
+$$
+whose fibers are pairwise linked circles; its class generates $\pi_3(S^2) \simeq \mathbb{Z}$.</textarea>
+        <div class="try-out a-body" id="try-out" aria-live="polite"></div>
+        <div class="try-foot">
+          <a class="tbtn" href="page.html?p=Sandbox&amp;edit"><i data-lucide="pencil"></i><span>Open the full editor (Sandbox)</span></a>
+        </div>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -63,9 +117,9 @@
 <section class="section" id="new">
   <div class="wrap">
     <header class="sec-head">
-      <span class="sec-no">§1</span>
+      <span class="sec-no">§2</span>
       <div><h2 class="h2">What’s new</h2><p class="sec-sub">Recent edits, the featured article and news from around the Lab.</p></div>
-      <a class="more" href="https://ncatlab.org/nlab/latest_revisions">All recent changes <i data-lucide="arrow-up-right"></i></a>
+      <a class="more" href="page.html?recent">All recent changes <i data-lucide="arrow-right"></i></a>
     </header>
 
     <div class="new-grid">
@@ -88,7 +142,7 @@
         <ol class="edits" id="edits" aria-live="polite">
           <li class="edits-loading">Loading recent edits…</li>
         </ol>
-        <a class="more" href="https://ncatlab.org/nlab/latest_revisions">All recent changes <i data-lucide="arrow-up-right"></i></a>
+        <a class="more" href="page.html?recent">All recent changes <i data-lucide="arrow-right"></i></a>
       </article>
 
       <!-- Column 3: news -->
@@ -109,9 +163,9 @@
 <section class="section" id="browse">
   <div class="wrap">
     <header class="sec-head">
-      <span class="sec-no">§2</span>
+      <span class="sec-no">§3</span>
       <div><h2 class="h2">Browse by subject</h2><p class="sec-sub">Start from a field and follow the links.</p></div>
-      <a class="more" href="https://ncatlab.org/nlab/all_pages">All pages <i data-lucide="arrow-up-right"></i></a>
+      <a class="more" href="page.html?all">All pages <i data-lucide="arrow-right"></i></a>
     </header>
 
     <div class="fields">
@@ -149,22 +203,6 @@
         <a class="more" href="page.html?p=philosophy">All philosophy <i data-lucide="arrow-right"></i></a>
       </article>
     </div>
-
-    <!-- Gallery: the same browsing, visually -->
-    <div class="gallery" data-plates>
-      <div class="gallery-head">
-        <h3 class="h3">Or browse by picture</h3>
-        <div class="plates-nav"><button type="button" aria-label="Previous"><i data-lucide="chevron-left"></i></button><button type="button" aria-label="Next"><i data-lucide="chevron-right"></i></button></div>
-      </div>
-      <div class="plates">
-        <a class="card plate-card" href="page.html?p=Calabi-Yau+variety"><div class="ph"><img class="contain" src="img/calabi.jpg" alt="Calabi–Yau manifold" data-credit="calabi" loading="lazy"></div><div class="cap"><span class="no">String theory</span><h4>Calabi–Yau varieties</h4></div></a>
-        <a class="card plate-card" href="page.html?p=hyperbolic+geometry"><div class="ph"><img class="contain" src="img/hyperbolic.png" alt="Hyperbolic tiling" data-credit="hyperbolic" loading="lazy"></div><div class="cap"><span class="no">Geometry</span><h4>Hyperbolic geometry</h4></div></a>
-        <a class="card plate-card" href="page.html?p=trefoil+knot"><div class="ph"><img class="contain" src="img/trefoil.png" alt="Trefoil knot" data-credit="trefoil" loading="lazy"></div><div class="cap"><span class="no">Topology</span><h4>Trefoil knot</h4></div></a>
-        <a class="card plate-card" href="page.html?p=dynamical+system"><div class="ph dark"><img src="img/lorenz.jpg" alt="Lorenz attractor" data-credit="lorenz" loading="lazy"></div><div class="cap"><span class="no">Dynamics</span><h4>Dynamical systems</h4></div></a>
-        <a class="card plate-card" href="page.html?p=Bose-Einstein+condensate"><div class="ph dark"><img src="img/bec.jpg" alt="Bose–Einstein condensate" data-credit="bec" loading="lazy"></div><div class="cap"><span class="no">Quantum matter</span><h4>Bose–Einstein condensate</h4></div></a>
-        <a class="card plate-card" href="page.html?p=cosmology"><div class="ph dark"><img src="img/cmb.jpg" alt="Timeline of the universe" data-credit="cmb" loading="lazy"></div><div class="cap"><span class="no">Cosmology</span><h4>Cosmology</h4></div></a>
-      </div>
-    </div>
   </div>
 </section>
 
@@ -183,36 +221,13 @@
   </div>
 </section>
 
-<!-- ================= §3 CONTRIBUTE ================= -->
-<section class="section" id="contribute">
-  <div class="wrap">
-    <header class="sec-head">
-      <span class="sec-no">§3</span>
-      <div><h2 class="h2">Contribute</h2><p class="sec-sub">Anyone can add to the nLab. Four steps:</p></div>
-      <a class="more" href="page.html?p=HowTo">Read the HowTo <i data-lucide="arrow-right"></i></a>
-    </header>
-    <div class="proof reveal">
-      <ol class="steps">
-        <li class="step"><span class="step-ic"><i data-lucide="search"></i></span><h4>Find the page</h4><p>Search or follow links. If the page doesn’t exist yet, create it.</p></li>
-        <li class="step"><span class="step-ic"><i data-lucide="pen-line"></i></span><h4>Write as in LaTeX</h4><p>Math in dollar signs, theorem environments, TikZ and XyMatrix diagrams.</p></li>
-        <li class="step"><span class="step-ic"><i data-lucide="book-open"></i></span><h4>Give sources</h4><p>Cite the literature, or include a proof or sanity check.</p></li>
-        <li class="step"><span class="step-ic"><i data-lucide="messages-square"></i></span><h4>Announce it</h4><p>Leave a short note on the nForum for anything beyond typo fixes.</p></li>
-      </ol>
-      <div class="qed">
-        <span>Practise first in the Sandbox — nothing there is permanent.</span>
-        <a class="btn" href="page.html?p=Sandbox"><i data-lucide="pen-line"></i>Open the Sandbox</a>
-      </div>
-    </div>
-  </div>
-</section>
-
 <!-- ================= §4 ABOUT ================= -->
 <section class="section" id="about">
   <div class="wrap">
     <header class="sec-head">
       <span class="sec-no">§4</span>
       <div><h2 class="h2">About the nLab</h2><p class="sec-sub">What it is, and how it is run.</p></div>
-      <a class="more" href="https://nforum.ncatlab.org/">nForum <i data-lucide="arrow-up-right"></i></a>
+      <a class="more" href="forum.html">Forum <i data-lucide="arrow-right"></i></a>
     </header>
     <div class="about">
       <div class="definition reveal">
@@ -223,7 +238,7 @@
       <ul class="principles">
         <li class="reveal"><span class="ic"><i data-lucide="globe"></i></span><div><h4>Free to use</h4><p>Read, share and build on it — acknowledge the source, as usual in academia.</p></div></li>
         <li class="reveal d1"><span class="ic"><i data-lucide="history"></i></span><div><h4>Cite an exact version</h4><p>Pages change; every page keeps its full public history.</p></div></li>
-        <li class="reveal d2"><span class="ic"><i data-lucide="messages-square"></i></span><div><h4>Discuss on the nForum</h4><p>Questions, corrections and edit announcements go there.</p></div></li>
+        <li class="reveal d2"><span class="ic"><i data-lucide="messages-square"></i></span><div><h4>Discuss in the <a href="forum.html">forum</a></h4><p>Questions, corrections and edit announcements go there.</p></div></li>
         <li class="reveal d3"><span class="ic"><i data-lucide="users"></i></span><div><h4>Who runs it</h4><p>Founded by <a href="page.html?p=Urs+Schreiber">Urs Schreiber</a>. Hosted at Carnegie Mellon University; software maintained by the nLab’s technical board.</p></div></li>
       </ul>
     </div>
@@ -231,20 +246,39 @@
 </section>
 </main>
 
+<!-- ================= Sign up for updates ================= -->
+<section class="updates" id="updates">
+  <div class="wrap updates-in">
+    <div>
+      <h2>Stay in the loop</h2>
+      <p>New pages, notable edits, forum highlights and events from the nLab community, delivered as a short monthly digest.</p>
+    </div>
+    <form class="signup" novalidate>
+      <div class="signup-row">
+        <input type="email" name="email" placeholder="Your email address" aria-label="Email address" autocomplete="email" required>
+        <button type="submit">Sign up</button>
+      </div>
+      <div class="signup-topics" role="group" aria-label="What to receive"><label><input type="checkbox" name="topic" value="digest" checked>Monthly digest</label><label><input type="checkbox" name="topic" value="new-pages">New pages</label><label><input type="checkbox" name="topic" value="events">Events & CQTS</label></div>
+      <p class="signup-note">One email a month at most. Unsubscribe any time.</p>
+      <p class="signup-ok" role="status"><i data-lucide="circle-check"></i><span>Thanks — you’re signed up.</span></p>
+    </form>
+  </div>
+</section>
+
 <footer>
   <div class="wrap">
     <div class="foot-cols">
       <div class="foot-about">
-        <a class="brand" href="./"><svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3c5 6 5 14 0 26C11 17 11 9 16 3z" fill="#6b8fd6"/><path d="M4 12c7-1 13 3 12 17C9 25 4 19 4 12z" fill="#5fae5f"/><path d="M28 12c-7-1-13 3-12 17 7-4 12-10 12-17z" fill="#e0606f"/></svg>nLab</a>
-        <p>Collaborative work on mathematics, physics and philosophy.</p>
+        <a class="brand" href="./"><svg class="brand-mark" width="28" height="28" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3c5 6 5 14 0 26C11 17 11 9 16 3z" fill="#6b8fd6"/><path d="M4 12c7-1 13 3 12 17C9 25 4 19 4 12z" fill="#5fae5f"/><path d="M28 12c-7-1-13 3-12 17 7-4 12-10 12-17z" fill="#e0606f"/></svg>nLab</a>
+        <p>The open wiki for mathematics, physics and philosophy. Read it, improve it.</p>
       </div>
-      <div><h6>Browse</h6><a href="page.html?p=mathematics">Mathematics</a><a href="page.html?p=physics">Physics</a><a href="page.html?p=philosophy">Philosophy</a><a href="https://ncatlab.org/nlab/all_pages">All pages</a></div>
-      <div><h6>Contribute</h6><a href="page.html?p=HowTo">HowTo</a><a href="page.html?p=Sandbox">Sandbox</a><a href="https://nforum.ncatlab.org/">nForum</a></div>
-      <div><h6>Activity</h6><a href="https://ncatlab.org/nlab/latest_revisions">Latest changes</a><a href="#new">What’s new</a></div>
+      <div><h6>Read</h6><a href="page.html?p=mathematics">Mathematics</a><a href="page.html?p=physics">Physics</a><a href="page.html?p=philosophy">Philosophy</a><a href="page.html?all">All pages</a></div>
+      <div><h6>Contribute</h6><a href="./#contribute">How to contribute</a><a href="page.html?p=HowTo">HowTo</a><a href="page.html?p=Sandbox&amp;edit">Sandbox</a></div>
+      <div><h6>Community</h6><a href="forum.html">Forum</a><a href="page.html?recent">Recent changes</a><a href="forum.html?new">Start a discussion</a></div>
       <div><h6>CQTS</h6><a href="cqts.html">Overview</a><a href="cqts.html#Symposium2026">Symposium 2026</a><a href="cqts.html#colloquium">Colloquium</a></div>
     </div>
     <details class="img-credits"><summary>Image credits (Wikimedia Commons)</summary><ul id="credits-list"></ul></details>
-    <div class="foot-base"><span>Content from the nLab. Recent edits from ncatlab.org.</span><span>Redesign prototype — not the official nLab.</span></div>
+    <div class="foot-base"><span>Content from the nLab (via its public content mirror) and the nForum.</span><span>Redesign prototype — not the official nLab.</span></div>
   </div>
 </footer>
 

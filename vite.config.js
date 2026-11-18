@@ -14,6 +14,12 @@ const nlabProxy = {
       if (loc) res.headers.location = loc.replace(/^https?:\/\/ncatlab\.org/, '/nlab-api');
     }),
   },
+  // nForum (Zulip): anonymous read access to its public channels
+  '/nforum-api': {
+    target: 'https://nforum.ncatlab.org',
+    changeOrigin: true,
+    rewrite: (path) => path.replace(/^\/nforum-api/, ''),
+  },
 };
 
 export default defineConfig({
@@ -26,6 +32,7 @@ export default defineConfig({
         main: resolve(import.meta.dirname, 'index.html'),
         page: resolve(import.meta.dirname, 'page.html'),
         cqts: resolve(import.meta.dirname, 'cqts.html'),
+        forum: resolve(import.meta.dirname, 'forum.html'),
       },
     },
   },
