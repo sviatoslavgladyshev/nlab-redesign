@@ -6,6 +6,7 @@
 import { auth as forumAuth, signIn as forumSignIn, signOut as forumSignOut } from '../core/forum-data.js';
 import { dbEnabled, currentUser, displayName, initAuth, signUp, signIn, signOut, resetPassword } from '../core/db.js';
 import { drafts } from '../core/drafts.js';
+import { applyProfilePreferences, cachedProfile, loadProfile } from '../core/profile.js';
 import { esc, FORUM } from '../core/nlab.js';
 import { icons, busy } from './app.js';
 
@@ -152,7 +153,7 @@ function render() {
   const slot = document.querySelector('.nav-account');
   if (!slot) return;
   const site = dbEnabled ? currentUser() : null;
-  const who = site ? { name: displayName(site), email: site.email } : !dbEnabled ? forumAuth.get() : null;
+  const who = site ? { name: cachedProfile(site)?.display_name || displayName(site), email: site.email } : !dbEnabled ? forumAuth.get() : null;
   if (!who) {
     slot.innerHTML = `<button type="button" class="nav-signin" data-acct="in">Sign in</button>
       <button type="button" class="nav-join" data-acct="up">Create account</button>`;
@@ -163,8 +164,10 @@ function render() {
       <summary aria-label="Account"><span class="av" style="--h:${hue(who.name)};--s:34px">${esc(initials(who.name))}</span></summary>
       <div class="acct-pop">
         <p class="acct-who"><b>${esc(who.name)}</b><span>${esc(who.email)}</span></p>
+        ${site ? '<a href="profile/">My profile</a><a href="profile/settings/">Profile settings</a>' : ''}
         <a href="write">Write a page</a>
-        <a href="write#drafts">My drafts${n ? ` <em>${n}</em>` : ''}</a>
+        <a href="write#drafts">Drafts &amp; publications${n ? ` <em>${n}</em>` : ''}</a>
+        <a href="suggestions/">Suggestions</a>
         <a href="forum/">Forum</a>
         <button type="button" data-acct="out">Sign out</button>
       </div>
@@ -179,6 +182,17 @@ document.addEventListener('click', async (e) => {
   } else openAccount(b.dataset.acct);
 });
 addEventListener('account-change', render);
+addEventListener('profile-change', render);
+addEventListener('account-change', async () => {
+  const user = currentUser();
+  if (!user) return;
+  try {
+    const profile = await loadProfile(user);
+    if (currentUser()?.id !== user.id) return;
+    applyProfilePreferences(profile, user.id);
+    render();
+  } catch { /* The menu can use the sign-in name until profiles are available. */ }
+});
 addEventListener('drafts-synced', render);
 render();
-initAuth();
+initAuth().catch(() => {});

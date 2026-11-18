@@ -91,6 +91,7 @@ export function buildToc(body) {
   document.body.classList.toggle('has-side', heads.length > 0 || hasCtx);
   $('[data-tab="toc"]').hidden = !heads.length;
   if (!heads.length) { if (hasCtx) activateTab('ctx'); return; }
+  if (!hasCtx) activateTab('toc');
   let s2 = 0, s3 = 0;
   toc.innerHTML = heads.map((h) => {
     const lvl = h.tagName[1];
@@ -103,7 +104,13 @@ export function buildToc(body) {
       if (!e.isIntersecting) return;
       toc.querySelectorAll('.on').forEach((a) => a.classList.remove('on'));
       const a = links.get(e.target.id);
-      if (a) { a.classList.add('on'); a.scrollIntoView({ block: 'nearest' }); }
+      if (!a) return;
+      a.classList.add('on');
+      if (toc.hidden || toc.scrollHeight <= toc.clientHeight) return;
+      const item = a.getBoundingClientRect();
+      const panel = toc.getBoundingClientRect();
+      if (item.top < panel.top) toc.scrollTop += item.top - panel.top;
+      else if (item.bottom > panel.bottom) toc.scrollTop += item.bottom - panel.bottom;
     });
   }, { rootMargin: '-80px 0px -70% 0px' });
   heads.forEach((h) => spy.observe(h));

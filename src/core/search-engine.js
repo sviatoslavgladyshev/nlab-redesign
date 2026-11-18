@@ -13,9 +13,11 @@
 //   summary:spectral         only in the summary
 //   kind:person              concept · theorem · person · reference
 
+import { isExcludedPage } from './page-visibility.js';
+
 let idxP;
 export const loadSearchIndex = () => (idxP ??= fetch('snapshot/search.json').then((r) => r.json()).then((rows) =>
-  rows.map(([name, kind, inbound, summary, fields, ...aliases]) => ({
+  rows.filter(([name]) => !isExcludedPage(name)).map(([name, kind, inbound, summary, fields, ...aliases]) => ({
     name, kind, inbound, summary, fields, aliases,
     n: norm(name), a: aliases.map(norm), s: norm(summary),
   }))));

@@ -8,6 +8,7 @@ import { renderSource, diffLines, resolveRefs } from '../../core/markup.js';
 import { createSourceEditor, setDoc, FORMAT, envSource, ENVS } from '../../ui/codemirror.js';
 import { VisualDoc } from './visual.js';
 import { loadNames } from '../../ui/suggest.js';
+import { toast } from '../wiki/shell.js';
 import katex from 'katex';
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -38,15 +39,15 @@ const ENV_MENU = [['defn|Definition', 'Definition', 'Introduce a notion', 'book-
 
 let ws; // the single workspace instance
 
-export function openWorkspace({ name, original, start, isNew = false, suggestion = false, onExit }) {
+export function openWorkspace({ name, original, start, starter = '', isNew = false, suggestion = false, onExit }) {
   ws?.destroy();
-  ws = new Workspace({ name, original, start, isNew, suggestion, onExit });
+  ws = new Workspace({ name, original, start, starter, isNew, suggestion, onExit });
   return ws;
 }
 
 class Workspace {
-  constructor({ name, original, start, isNew, suggestion, onExit }) {
-    Object.assign(this, { name, original, isNew, suggestion, onExit });
+  constructor({ name, original, start, starter, isNew, suggestion, onExit }) {
+    Object.assign(this, { name, original, starter, isNew, suggestion, onExit });
     this.source = start;
     this.el = $('#ws');
     this.el.hidden = false;
@@ -66,7 +67,7 @@ class Workspace {
     });
     // LaTeX
     $('#ws-cm').replaceChildren();
-    this.cm = createSourceEditor({ parent: $('#ws-cm'), doc: start, onChange: (src) => this.update(src, 'latex'), onSave: () => this.saveNow(true) });
+    this.cm = createSourceEditor({ parent: $('#ws-cm'), doc: start, placeholder: 'Start writing…', onChange: (src) => this.update(src, 'latex'), onSave: () => this.saveNow(true) });
     on($('#ws-cm'), 'scroll', () => this.syncScroll(), { capture: true, passive: true });
 
     // Toolbar
@@ -112,7 +113,10 @@ class Workspace {
     this.el.dataset.mode = mode;
     $('#ws-visual').hidden = mode !== 'visual';
     $('#ws-latex').hidden = mode !== 'latex';
-    if (mode === 'visual') this.visual.load(this.source);
+    if (mode === 'visual') {
+      this.visual.load(this.source);
+      this.visual.focusEmpty();
+    }
     else { if (this.cm.state.doc.toString() !== this.source) setDoc(this.cm, this.source); this.renderPreview(); requestAnimationFrame(() => this.cm.focus()); }
     $('#ws-hint').innerHTML = mode === 'visual'
       ? 'Type as normal text · <kbd>$x$</kbd> becomes a formula · <kbd>[[page]]</kbd> a link · <kbd>##</kbd>␣ a section · <kbd>⌘M</kbd> formula'
@@ -217,6 +221,10 @@ class Workspace {
   saveNow(flash = false) {
     clearTimeout(this.st);
     if (this.mode === 'visual') this.source = this.visual.getSource();
+    if (this.isNew && !drafts.get(this.name) && (!this.source.trim() || this.source.trim() === this.starter.trim())) {
+      this.saveState('clean');
+      return;
+    }
     if (this.source === this.original && !this.isNew) { drafts.clear(this.name); this.saveState('clean'); return; }
     const ok = drafts.set(this.name, { source: this.source, savedAt: Date.now(), isNew: this.isNew });
     this.saveState(ok ? 'saved' : 'error', new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }));
@@ -388,14 +396,20 @@ class Workspace {
   /* ----- publishing ----- */
   openPublish() {
     this.saveNow();
+    if (this.isNew && !this.source.trim()) {
+      toast('Write something before publishing this page.');
+      return;
+    }
     const dlg = $('#pub-dlg');
     const { added, removed } = diffLines(this.original, this.source);
-    $('#pub-title').textContent = this.suggestion ? 'Suggest an edit' : 'Publish to the nLab';
+    $('#pub-title').textContent = this.suggestion ? 'Suggest an edit' : this.isNew ? 'Publish new page' : 'Publish to the nLab';
     $('#pub-intro').textContent = this.suggestion
       ? 'Share your proposed source with the page authors. Suggestions are reviewed before they become part of the article.'
       : 'The nLab stores every page on ncatlab.org. Publishing takes three short steps:';
     $('#pub-step-paste').textContent = this.suggestion ? 'Share the proposed source with the page author.' : 'Paste it into the nLab editor and press “Submit”.';
-    $('#pub-step-forum').textContent = this.suggestion ? 'Explain what you would change and why in the forum.' : 'For anything beyond a typo, say what you changed in the forum.';
+    $('#pub-step-forum').textContent = this.suggestion
+      ? 'Explain what you would change and why in the forum.'
+      : this.isNew ? 'Introduce your new page in the forum.' : 'For anything beyond a typo, say what you changed in the forum.';
     $('#pub-open').hidden = this.suggestion;
     $('#pub-sum').textContent = this.suggestion ? `${added} line${added === 1 ? '' : 's'} added, ${removed} removed · suggestion only` : (this.isNew ? `New page · ${this.source.split('\n').length} lines` : `${added} line${added === 1 ? '' : 's'} added, ${removed} removed`);
     $('#pub-open').href = `${ORIGIN}/nlab/${this.isNew ? 'new' : 'edit'}/${encodeName(this.name)}`;
@@ -416,16 +430,16 @@ class Workspace {
     $('#pub-err').textContent = '';
     $('#pub-note').value = '';
     if (viaDb) {
-      $('#pub-title').textContent = this.suggestion ? 'Suggest an edit' : 'Publish';
+      $('#pub-title').textContent = this.suggestion ? 'Suggest an edit' : this.isNew ? 'Publish new page' : 'Publish changes';
       $('#pub-db-intro').textContent = !signedIn
         ? `Sign in to ${this.suggestion ? 'send your suggestion' : 'publish'}: your name goes with your contribution.`
         : this.suggestion ? 'Your suggestion is saved with the page, where its authors can review it.' : 'Your page goes live on this site straight away, with your name in its history.';
-      $('#pub-note').closest('label').hidden = !signedIn;
+      $('#pub-note').closest('label').hidden = !signedIn || (this.isNew && !this.suggestion);
       $('#pub-nlab-sum').textContent = this.suggestion ? 'Or send it to the nLab yourself' : 'Also send it to ncatlab.org';
     }
     const primary = $('#pub-done');
     const label = !viaDb ? (this.suggestion ? 'I’ve sent the suggestion' : 'I’ve published it')
-      : !signedIn ? 'Sign in' : this.suggestion ? 'Send suggestion' : 'Publish now';
+      : !signedIn ? 'Sign in' : this.suggestion ? 'Send suggestion' : this.isNew ? 'Publish page' : 'Publish changes';
     primary.innerHTML = `<i data-lucide="${!viaDb ? 'check' : !signedIn ? 'log-in' : this.suggestion ? 'send' : 'cloud-upload'}"></i><span>${label}</span>`;
     icons();
     primary.onclick = async () => {
@@ -435,7 +449,7 @@ class Workspace {
       $('#pub-err').textContent = '';
       try {
         const note = $('#pub-note').value.trim();
-        if (this.suggestion) await suggestEdit(this.name, this.source, note);
+        if (this.suggestion) await suggestEdit(this.name, this.source, note, this.original);
         else await savePage(this.name, this.source, { summary: pageSummary(this.source), links: pageLinks(this.source), note });
         forgetPage(this.name);
         done(this.suggestion ? 'suggested-db' : 'published-db');
@@ -453,11 +467,11 @@ export const texToHtml = (tex) => katex.renderToString(tex, { throwOnError: fals
 export { ENVS };
 
 // For the database: a page's summary (its first real paragraph) and the pages it links to
-function pageSummary(source) {
+export function pageSummary(source) {
   const box = document.createElement('div');
   box.innerHTML = renderSource(source);
   const p = [...box.querySelectorAll('p')].map((x) => x.textContent.replace(/\s+/g, ' ').trim()).find((t) => t.length > 40) || '';
   return p.length > 230 ? `${p.slice(0, 230).replace(/\s+\S*$/, '')}…` : p;
 }
-const pageLinks = (source) => [...new Set([...source.replace(/\[\[!include[^\]]*\]\]/g, '').matchAll(/\[\[([^\]|#!][^\]|#]*)/g)]
+export const pageLinks = (source) => [...new Set([...source.replace(/\[\[!include[^\]]*\]\]/g, '').matchAll(/\[\[([^\]|#!][^\]|#]*)/g)]
   .map((m) => m[1].trim().toLowerCase()).filter(Boolean))].slice(0, 2000);

@@ -10,7 +10,9 @@ export function setHero({ title, crumb, meta = '', actions = '' }) {
   document.title = `${title} — nLab`;
   $('#a-title').textContent = title;
   $('#crumb-current').textContent = crumb ?? title;
-  $('#a-meta').innerHTML = meta || '&nbsp;';
+  const metaLine = $('#a-meta');
+  metaLine.innerHTML = meta;
+  metaLine.hidden = !meta;
   $('#a-actions').innerHTML = actions;
   icons();
 }

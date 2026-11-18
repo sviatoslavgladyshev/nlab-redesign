@@ -123,6 +123,7 @@ export class VisualDoc {
     this.timer = 0;
     root.classList.add('vdoc', 'a-body');
     root.contentEditable = 'true';
+    root.dataset.placeholder = 'Start writing…';
     root.spellcheck = true;
     document.execCommand?.('defaultParagraphSeparator', false, 'p');
     root.addEventListener('input', (e) => this.handleInput(e));
@@ -154,6 +155,7 @@ export class VisualDoc {
     tail.innerHTML = '<br>';
     frag.append(tail);
     this.root.replaceChildren(frag);
+    this.updatePlaceholder();
     clean(this.root);
     this.root.querySelectorAll('.m').forEach((m) => { m.contentEditable = 'false'; });
     icons();
@@ -233,7 +235,22 @@ export class VisualDoc {
     return (this.lead || '') + joinBlocks(out).replace(/\s*$/, '') + (this.trail ?? '\n');
   }
 
+  updatePlaceholder() {
+    const empty = this.root.childElementCount <= 1
+      && !this.root.textContent.replace(/\u200b/g, '').trim()
+      && !this.root.querySelector('img, svg, math, .m, .v-island, hr');
+    this.root.classList.toggle('is-empty', empty);
+  }
+
+  focusEmpty() {
+    if (!this.root.classList.contains('is-empty')) return;
+    this.root.focus({ preventScroll: true });
+    const selection = this.root.ownerDocument.getSelection();
+    selection?.collapse(this.root.firstElementChild || this.root, 0);
+  }
+
   changed() {
+    this.updatePlaceholder();
     clearTimeout(this.timer);
     this.timer = setTimeout(() => this.onChange?.(this.getSource()), 250);
   }

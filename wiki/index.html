@@ -59,7 +59,8 @@
     <p><b id="draft-title">You have an unpublished draft of this page.</b> <span id="draft-when"></span></p>
     <div class="draft-actions">
       <button type="button" class="tbtn" data-act="toggle-published"><i data-lucide="eye"></i><span>Show published</span></button>
-      <button type="button" class="tbtn primary" data-act="edit"><i data-lucide="pencil"></i><span>Continue editing</span></button>
+      <a class="tbtn" id="draft-copy" hidden><i data-lucide="file-plus-2"></i>Copy to a new title</a>
+      <button type="button" class="tbtn primary" data-act="resume-draft"><i data-lucide="pencil"></i><span>Continue editing</span></button>
     </div>
   </div>
 </div>
@@ -68,7 +69,7 @@
 <div class="ws" id="ws" hidden data-mode="visual">
   <header class="ws-bar">
     <div class="ws-left">
-      <button class="ws-icon" type="button" data-ws="close" title="Back to the page (your draft is kept)" aria-label="Back to the page"><i data-lucide="arrow-left"></i></button>
+      <button class="ws-icon" type="button" data-ws="close" title="Back to your drafts and publications" aria-label="Back to your drafts and publications"><i data-lucide="arrow-left"></i></button>
       <div class="ws-title">
         <span class="ws-kicker">Editing <em id="ws-new" hidden>· new page</em></span>
         <b id="ws-name">Page</b>

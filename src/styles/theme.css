@@ -127,7 +127,7 @@
 [data-theme="prism"] .img-credits, [data-theme="prism"] .foot-base { border-color: var(--rule); color: var(--muted); }
 [data-theme="prism"] .side-tabs { border: 0; border-radius: 999px; background: var(--paper-2); }
 [data-theme="prism"] .side-tabs button { border-radius: 999px; }
-[data-theme="prism"] .side-tabs button[aria-selected="true"] { background: #dce6f5; box-shadow: none; }
+[data-theme="prism"] .side-tabs button[aria-selected="true"] { background: var(--tonal); color: var(--on-tonal); box-shadow: none; }
 
 .proto-note { display: none; }
 
@@ -473,7 +473,7 @@ html[data-mode="dark"] .nav-links a[aria-current] .nav-cqts { background-color: 
     .h-head h2::after { content: ""; display: block; width: 64px; height: 4px; margin-top: 14px; border-radius: 2px; background: var(--primary); transform-origin: left; animation: sa-line linear both; animation-timeline: view(); animation-range: entry 40% cover 35%; }
 
     /* library, forum, search, articles, CQTS */
-    .lib-card, .topic, .sr-list li, .a-body .link-list > li, .a-body figure, .a-body .a-cats, .cq-person, .cq-director, .cq-tile, .cq-mat, .cq-head, .cq-way, .w-tpl {
+    .lib-card, .topic, .sr-list li, .a-body .link-list > li, .a-body figure, .a-body .a-cats, .cq-person, .cq-director, .cq-tile, .cq-mat, .cq-head, .cq-way {
       animation: sa-rise linear both; animation-timeline: view(); animation-range: entry 0% entry 70%; }
     .lib-grid .lib-card:nth-child(even), .cq-grid .cq-person:nth-child(even) { animation-range: entry 10% entry 85%; }
     .cq-glyphs span, .cq-campus img { animation: sa-drift linear both; animation-timeline: view(); animation-range: cover 0% cover 100%; }

@@ -6,6 +6,7 @@ import './library.css';
 import 'katex/dist/katex.min.css';
 import { esc, pageUrl, displayTitle } from '../../core/nlab.js';
 import { fillPreview } from '../../ui/preview.js';
+import { isExcludedPage } from '../../core/page-visibility.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -170,7 +171,7 @@ fetch('snapshot/library.json').then((r) => r.json()).then((data) => {
   LIB = {
     fields: data.fields,
     subs: data.subs,
-    pages: data.pages.map(([name, kind, inbound, subs]) => ({ name, kind, inbound, subs, lower: name.toLowerCase(), fields: [] })),
+    pages: data.pages.filter(([name]) => !isExcludedPage(name)).map(([name, kind, inbound, subs]) => ({ name, kind, inbound, subs, lower: name.toLowerCase(), fields: [] })),
   };
   LIB.pages.forEach((p) => { p.fields = fieldsOf(p); });
   render();

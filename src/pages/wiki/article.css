@@ -10,6 +10,13 @@
 }
 
 /* ---------- Header ---------- */
+.review-card { padding: 18px; margin-bottom: 14px; border: 1px solid var(--rule); border-radius: 14px; background: var(--surface); font-family: var(--ui); }
+.review-heading, .review-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.review-heading { justify-content: space-between; margin-bottom: 8px; font-weight: 650; }
+.review-heading span { color: var(--muted); font-size: .85em; }
+.review-card summary { cursor: pointer; color: var(--primary); }
+.review-sources { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 12px; margin: 14px 0; }
+.a-body .review-sources pre { margin: 5px 0 0; max-height: 22rem; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--paper-2); color: var(--ink); }
 .a-hero { padding: 40px 0 26px; background: var(--paper); border-bottom: 1px solid var(--rule); }
 .crumbs { display: flex; gap: 8px; font: 500 13px/1.4 var(--ui); color: var(--muted); }
 .crumbs a:hover { color: var(--link); }
@@ -58,7 +65,7 @@
 .a-ctx .hide { display: none; }
 
 /* Skeleton */
-.skel { display: block; height: 1em; width: 100%; border-radius: 6px; background: linear-gradient(90deg, #eef0f3 0%, #f7f8fa 50%, #eef0f3 100%); background-size: 200% 100%; animation: shimmer 1.4s infinite; }
+.skel { display: block; height: 1em; width: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--paper-2) 0%, var(--rule) 50%, var(--paper-2) 100%); background-size: 200% 100%; animation: shimmer 1.4s infinite; }
 .a-hero .skel { height: .9em; }
 .skel-block .skel { height: 16px; margin: 14px 0; }
 @keyframes shimmer { to { background-position: -200% 0; } }

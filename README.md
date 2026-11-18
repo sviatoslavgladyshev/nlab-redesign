@@ -64,6 +64,7 @@ in `supabase/schema.sql`. Never put the secret key in this repository.
 - Sign-in links: Authentication → URL Configuration → Site URL `https://sviatoslavgladyshev.github.io/nlab-redesign/`,
   and add `http://localhost:5173/**` to the redirect URLs for local development.
 - Drafts are kept in the browser and, when signed in, in the `drafts` table (merged on sign-in, newest wins).
+- Account → My profile opens the private profile and settings pages. The `profiles` table stores profile details and preferences. To enable profiles on an existing project, rerun `supabase/schema.sql`, then `supabase/content.sql` to use the profile display name for future contributions.
 - "Stay in the loop" sign-ups go to the `subscribers` table (Table Editor → export as CSV).
 - Without `.env`, everything still works and stays in the browser.
 

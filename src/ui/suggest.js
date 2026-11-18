@@ -1,12 +1,13 @@
 // Instant page-name suggestions for every search box, from the list of all nLab pages
 // (snapshot/pages.json, written by scripts/snapshot.mjs). Arrow keys + Enter, Esc to close.
 import { pageUrl, esc } from '../core/nlab.js';
+import { isExcludedPage } from '../core/page-visibility.js';
 
 let names, loaded = [];
 export const loadNames = () => (names ??= fetch('snapshot/pages.json')
   .then((r) => (r.ok ? r.json() : []))
   .catch(() => [])
-  .then((list) => { loaded = list; return list; }));
+  .then((list) => { loaded = list.filter((name) => !isExcludedPage(name)); return loaded; }));
 export const pageExists = (q) => loaded.find((n) => n.toLowerCase() === q.trim().toLowerCase());
 
 export async function randomPage() {

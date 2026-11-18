@@ -17,13 +17,25 @@ const local = {
 // The editor saves every few hundred milliseconds while you type; the database gets one write per
 // draft every couple of seconds.
 const pending = new Map();
+const writes = new Map();
+const removing = new Set();
+let deletionVersion = 0;
+
+function queueWrite(name, write) {
+  const next = (writes.get(name) || Promise.resolve()).catch(() => {}).then(write);
+  writes.set(name, next);
+  const cleanup = () => { if (writes.get(name) === next) writes.delete(name); };
+  next.then(cleanup, cleanup);
+  return next;
+}
+
 const pushLater = (name) => {
   if (!dbEnabled || !currentUser()) return;
   clearTimeout(pending.get(name));
   pending.set(name, setTimeout(() => {
     pending.delete(name);
     const d = local.get(name);
-    (d ? saveDraft(name, d) : deleteDraft(name)).catch(() => { /* stays local; synced on next sign-in */ });
+    queueWrite(name, () => d ? saveDraft(name, d) : deleteDraft(name)).catch(() => { /* stays local; synced on next sign-in */ });
   }, 1500));
 };
 
@@ -31,6 +43,24 @@ export const drafts = {
   get: (name) => local.get(name),
   set(name, d) { const ok = local.set(name, d); pushLater(name); return ok; },
   clear(name) { local.clear(name); pushLater(name); },
+  async remove(name) {
+    const user = currentUser();
+    const draft = local.get(name);
+    removing.add(name);
+    deletionVersion++;
+    clearTimeout(pending.get(name));
+    pending.delete(name);
+    try {
+      if (dbEnabled && user) await queueWrite(name, () => {
+        if (currentUser()?.id !== user.id) throw new Error('Sign back in to delete this draft.');
+        return deleteDraft(name);
+      });
+      if (local.get(name)?.savedAt === draft?.savedAt) local.clear(name);
+    } finally {
+      deletionVersion++;
+      removing.delete(name);
+    }
+  },
   list: () => local.all().sort((a, b) => b.savedAt - a.savedAt),
 };
 export const draftsSynced = () => dbEnabled && !!currentUser();
@@ -38,14 +68,18 @@ export const draftsSynced = () => dbEnabled && !!currentUser();
 async function sync() {
   if (!dbEnabled || !currentUser()) return;
   try {
+    const version = deletionVersion;
+    const userId = currentUser().id;
     const remote = new Map((await fetchDrafts()).map((d) => [d.name, d]));
+    if (version !== deletionVersion || currentUser()?.id !== userId) return;
     for (const [name, r] of remote) {
+      if (removing.has(name)) continue;
       const l = local.get(name);
       if (!l || l.savedAt < r.savedAt) local.set(name, { source: r.source, savedAt: r.savedAt, isNew: r.isNew });
     }
-    await Promise.all(local.all().filter((l) => !remote.has(l.name) || remote.get(l.name).savedAt < l.savedAt)
-      .map((l) => saveDraft(l.name, l)));
     dispatchEvent(new CustomEvent('drafts-synced'));
+    await Promise.all(local.all().filter((l) => !removing.has(l.name) && (!remote.has(l.name) || remote.get(l.name).savedAt < l.savedAt))
+      .map((l) => queueWrite(l.name, () => currentUser()?.id === userId && saveDraft(l.name, l))));
   } catch { /* offline or not set up yet: drafts stay in this browser */ }
 }
 addEventListener('account-change', sync);

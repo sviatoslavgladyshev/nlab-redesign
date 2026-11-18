@@ -16,7 +16,10 @@ export const displayName = (u = currentUser()) => u?.user_metadata?.name || u?.e
 
 // Restore the session (kept by Supabase in this browser) and announce every sign-in / sign-out
 // as an `account-change` event, which the account menu, drafts and forum listen to.
-export async function initAuth() {
+let authReady;
+export const initAuth = () => (authReady ??= restoreAuth());
+
+async function restoreAuth() {
   if (!dbEnabled) return;
   const c = await db();
   session = (await c.auth.getSession()).data.session;
@@ -110,7 +113,15 @@ export const embedPage = (name) => fetch(`${URL_}/functions/v1/search`, {
   body: JSON.stringify({ embed: name }),
   keepalive: true,
 }).catch(() => {});
-export const suggestEdit = (name, source, note = '') => rpc('suggest_edit', { p_name: name, p_source: source, p_note: note });
+export const suggestEdit = (name, source, note, original) =>
+  rpc('suggest_edit', { p_name: name, p_source: source, p_note: note, p_base_source: original });
+export const ownsPage = (name) => rpc('owns_page', { p_name: name });
+export const myPublications = () => rpc('my_publications');
+export const suggestionsInbox = () => rpc('suggestions_inbox');
+export const deleteReviewedSuggestion = (id) => rpc('delete_reviewed_suggestion', { p_id: id });
+export const reviewSuggestion = (id, accept, currentSource, summary, links) => rpc('review_suggestion', {
+  p_id: id, p_accept: accept, p_current_source: currentSource, p_summary: summary, p_links: links,
+});
 
 /* ---------- smart search (supabase/rag.sql + functions/search) ---------- */
 // Meaning + words. Falls back to word-only full-text search if the search function isn't deployed.

@@ -26,7 +26,7 @@ const nlabProxy = {
 // Clean URLs. Real folders: library/, forum/, cqts/, wiki/. Everything else (wiki/<Page>, search,
 // recent, all, write, old *.html links) is handled by the wiki app — in production as the site's
 // 404 page (plus pre-generated pages, see scripts/seo.mjs), in dev through this rewrite.
-const APP_ROUTES = /^\/(wiki\/.+|search|recent|all|write|page\.html)(\/)?(\?.*)?$/;
+const APP_ROUTES = /^\/(wiki\/.+|search|recent|all|write|suggestions|profile(?:\/settings)?|page\.html)(\/)?(\?.*)?$/;
 // ---------- SEO: titles, descriptions, link previews, structured data ----------
 export const SITE = 'https://sviatoslavgladyshev.github.io/nlab-redesign/';
 const PAGES = {

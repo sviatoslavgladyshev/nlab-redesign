@@ -11,6 +11,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { SITE, seoTags, articleJsonld } from '../vite.config.js';
+import { isExcludedPage } from '../src/core/page-visibility.js';
 import { articleMeta } from './article-meta.mjs';
 
 const mirror = process.argv[2] || join(tmpdir(), 'nlab-content');
@@ -59,7 +60,7 @@ const shell = await read('wiki/index.html');
 const lib = JSON.parse(await readFile(new URL('../public/snapshot/library.json', import.meta.url), 'utf8'));
 const idx = JSON.parse(await readFile(new URL('../public/snapshot/nlab-index.json', import.meta.url), 'utf8'));
 const dirOf = new Map(idx.pages.map(([d, n]) => [n, d]));
-const ranked = lib.pages.slice().sort((a, b) => b[2] - a[2]).slice(0, LIMIT);
+const ranked = lib.pages.filter(([name]) => !isExcludedPage(name)).sort((a, b) => b[2] - a[2]).slice(0, LIMIT);
 if (!ranked.some((p) => p[0] === 'Center for Quantum and Topological Systems')) ranked.push(lib.pages.find((p) => p[0] === 'Center for Quantum and Topological Systems'));
 
 const urls = [];
@@ -120,6 +121,9 @@ for (const [slug, name] of CQTS_PEOPLE) {
 
 // 404: the app shell (serves every other article and old .html links), not indexed itself
 await write('404.html', withSeo(shell, `<title>nLab</title>\n<meta name="robots" content="noindex">`));
+await write('suggestions/index.html', withSeo(shell, `<title>Suggestions — nLab</title>\n<meta name="robots" content="noindex">`));
+await write('profile/index.html', withSeo(shell, `<title>My profile — nLab</title>\n<meta name="robots" content="noindex">`));
+await write('profile/settings/index.html', withSeo(shell, `<title>Profile settings — nLab</title>\n<meta name="robots" content="noindex">`));
 
 const today = new Date().toISOString().slice(0, 10);
 const top = [SITE, `${SITE}library/`, `${SITE}forum/`, `${SITE}recent`];

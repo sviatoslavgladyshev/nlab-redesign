@@ -4,6 +4,7 @@
 //    credentials). Signing in exchanges email + password for an API key directly with
 //    nforum.ncatlab.org; only that key is kept, in this browser.
 import { FORUM } from './nlab.js';
+import { isExcludedPage } from './page-visibility.js';
 
 const KEY = 'nforum-auth';
 export const auth = {
@@ -113,6 +114,6 @@ export async function allTopics() {
 export async function latestEdits(limit = 6) {
   const s = await snapshot();
   const ch = s.channels.find((c) => c.name === 'Latest Changes');
-  return (ch?.topics || []).filter((t) => t.edit && !/^Sandbox/i.test(t.t)).slice(0, limit)
+  return (ch?.topics || []).filter((t) => t.edit && !/^Sandbox/i.test(t.t) && !isExcludedPage(t.t)).slice(0, limit)
     .map((t) => ({ page: t.t, ...t.edit, when: t.last }));
 }

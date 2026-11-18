@@ -1,6 +1,22 @@
 -- Database for the nLab redesign. Run once in the Supabase dashboard: SQL Editor → New query → paste → Run.
 -- Safe to run again.
 
+-- Private profile and synced preferences. Each account can access only its own row.
+create table if not exists public.profiles (
+  user_id uuid primary key references auth.users (id) on delete cascade default auth.uid(),
+  display_name text not null check (char_length(btrim(display_name)) between 1 and 80),
+  affiliation text not null default '' check (char_length(affiliation) <= 120),
+  bio text not null default '' check (char_length(bio) <= 500),
+  theme text check (theme in ('system', 'light', 'dark')),
+  focus_read boolean
+);
+alter table public.profiles enable row level security;
+revoke all on public.profiles from anon, authenticated;
+grant select, insert, update on public.profiles to authenticated;
+drop policy if exists "own profile" on public.profiles;
+create policy "own profile" on public.profiles for all to authenticated
+  using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+
 -- Drafts: one row per user and page. Each person can only see and change their own.
 create table if not exists public.drafts (
   user_id   uuid not null default auth.uid() references auth.users (id) on delete cascade,

@@ -1,0 +1,30 @@
+.profile-layout { max-width: 900px; margin-inline: auto; display: grid; gap: 26px; color: var(--ink); }
+.profile-nav { display: flex; flex-wrap: wrap; gap: 6px; }
+.profile-nav a { padding: 8px 15px; border-radius: 999px; font: 600 14px var(--ui); color: var(--muted); }
+.profile-nav a:hover, .profile-nav [aria-current="page"] { background: var(--tonal); color: var(--on-tonal); }
+.profile-layout h2 { margin: 0 0 12px; font: 600 24px/1.2 var(--display); letter-spacing: -.01em; }
+.profile-layout h2::before { content: none !important; }
+.profile-card { min-width: 0; padding: 22px; border: 1px solid var(--rule); border-radius: 17px; background: var(--surface); }
+.profile-identity, .profile-account { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
+.profile-person, .profile-account > div { flex: 1 1 190px; min-width: 0; overflow-wrap: anywhere; }
+.profile-identity h2, .profile-account h2 { margin-bottom: 5px; }
+.profile-layout .profile-identity p, .profile-layout .profile-account p { margin: 0; color: var(--muted); font-size: 14px; }
+.profile-layout .profile-identity .profile-bio { margin-top: 8px; color: var(--ink-2); white-space: pre-wrap; }
+.profile-initials { display: grid; place-items: center; flex: none; width: 64px; height: 64px; border-radius: 20px; background: var(--tonal); color: var(--on-tonal); font: 650 23px var(--ui); }
+.profile-links { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: 12px; }
+.profile-work-link { display: flex; align-items: center; gap: 12px; color: var(--ink) !important; text-decoration: none !important; }
+.profile-work-link:hover { border-color: var(--primary); }
+.profile-work-link > span { display: grid; gap: 3px; flex: 1; }
+.profile-work-link svg { flex: none; width: 17px; height: 17px; color: var(--primary); }
+.profile-work-link b { font-size: 15px; }
+.profile-work-link small, .profile-form small, .profile-form label span { font-size: 12px; color: var(--muted); }
+.profile-form { display: grid; gap: 20px; }
+.profile-form fieldset { display: grid; gap: 14px; }
+.profile-form legend { padding-inline: 7px; font: 650 15px var(--ui); }
+.profile-form label { display: grid; gap: 5px; font: 600 14px/1.4 var(--ui); }
+.profile-form label span { font-weight: 400; }
+.profile-form input:not([type="checkbox"]), .profile-form select, .profile-form textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--outline); border-radius: 9px; background: var(--paper); color: var(--ink); font: 400 15px/1.45 var(--ui); }
+.profile-form textarea { resize: vertical; }
+.profile-form .profile-check, .profile-save { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.profile-save p[role="status"] { margin: 0; font-size: 14px; color: var(--muted); }
+.profile-settings input:focus-visible, .profile-form :is(input, select, textarea):focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }

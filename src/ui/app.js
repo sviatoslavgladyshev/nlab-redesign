@@ -31,7 +31,7 @@ const ICONS = {
 export const icons = () => createIcons({ icons: ICONS });
 // A button's loading state: a spinner and a short label while something is on its way.
 // Returns a function that puts the button back.
-const BUSY_LABEL = { 'Sign in': 'Signing in…', 'Create account': 'Creating account…', 'Send link': 'Sending…', 'Connect': 'Connecting…', 'Sign up': 'Signing up…', Continue: 'Opening…' };
+const BUSY_LABEL = { 'Sign in': 'Signing in…', 'Create account': 'Creating account…', 'Send link': 'Sending…', 'Connect': 'Connecting…', 'Sign up': 'Signing up…', 'Start writing': 'Opening editor…', Continue: 'Opening…' };
 export function busy(btn) {
   if (!btn) return () => {};
   const html = btn.innerHTML, label = btn.textContent.trim();
@@ -293,10 +293,11 @@ document.addEventListener('click', (e) => {
   document.addEventListener('click', (e) => {
     if (!e.target.closest('.nav-mode')) return;
     const next = document.documentElement.dataset.mode === 'dark' ? 'light' : 'dark';
-    const apply = () => { document.documentElement.dataset.mode = next; sync(); dispatchEvent(new CustomEvent('modechange', { detail: next })); };
+    const apply = () => { document.documentElement.dataset.mode = next; dispatchEvent(new CustomEvent('modechange', { detail: next })); };
     try { localStorage.setItem('nlab-mode', next); } catch { /* private mode */ }
     if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) document.startViewTransition(apply); else apply();
   });
+  addEventListener('modechange', sync);
   sync();
 }
 

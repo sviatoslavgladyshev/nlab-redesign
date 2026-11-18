@@ -4,6 +4,7 @@
 import { icons } from '../../ui/app.js';
 import './article.css';
 import { esc, pageUrl } from '../../core/nlab.js';
+import { isExcludedPage } from '../../core/page-visibility.js';
 import { $, params, setHero, link } from './shell.js';
 import { renderArticle } from './article.js';
 import { renderSearch } from './search.js';
@@ -31,11 +32,13 @@ if (legacy) {
 } else {
   const article = path.match(/^wiki\/(.+?)\/?$/);
   const view = path.replace(/\/$/, '');
-  if (article) renderArticle(article[1]).catch((e) => showError(article[1], e));
+  if (article && !isExcludedPage(article[1])) renderArticle(article[1]).catch((e) => showError(article[1], e));
   else if (view === 'search') renderSearch(params.get('q') || '').catch((e) => showError('Search', e));
   else if (view === 'recent') renderRecent().catch((e) => showError('Recent changes', e));
   else if (view === 'all') renderAll().catch((e) => showError('All pages', e));
   else if (view === 'write') renderWrite();
+  else if (view === 'suggestions') import('./suggestions.js').then(({ showSuggestions }) => showSuggestions()).catch((e) => showError('Suggestions', e));
+  else if (view === 'profile' || view === 'profile/settings') import('./profile.js').then(({ showProfile }) => showProfile(view.endsWith('/settings'))).catch((e) => showError('Profile', e));
   else if (view === 'wiki' || view === '') location.replace(document.baseURI);
   else {
     setHero({ title: 'Page not found', meta: 'There is nothing at this address.' });

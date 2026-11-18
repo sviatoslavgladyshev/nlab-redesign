@@ -10,6 +10,7 @@ import { readdir, readFile, writeFile, mkdir, stat } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { isExcludedPage } from '../src/core/page-visibility.js';
 
 const OUT = new URL('../public/snapshot/', import.meta.url);
 const REPO = 'https://github.com/ncatlab/nlab-content.git';
@@ -67,6 +68,7 @@ async function walk(rel) {
   const entries = await readdir(join(dir, rel), { withFileTypes: true });
   if (entries.some((e) => e.isFile() && e.name === 'name')) {
     const name = (await readFile(join(dir, rel, 'name'), 'utf8')).trim();
+    if (isExcludedPage(name)) return;
     const src = await readFile(join(dir, rel, 'content.md'), 'utf8').catch(() => '');
     const aliases = [...src.matchAll(/\[\[!redirects\s+([^\]]+?)\s*\]\]/g)].map((m) => m[1].trim());
     pages.push([rel.replace(/^pages\//, ''), name, ...aliases]);

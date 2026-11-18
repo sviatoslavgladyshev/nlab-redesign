@@ -50,6 +50,9 @@ create table if not exists public.revisions (
   created_at   timestamptz not null default now()
 );
 create index if not exists revisions_page_idx on public.revisions (page_id, created_at desc);
+create index if not exists revisions_first_author_idx on public.revisions (page_id, id) include (author);
+create index if not exists pages_publications_idx on public.pages (updated_at desc, name)
+  where origin = 'site' and mirror_dir is null;
 
 create table if not exists public.suggestions (
   id           bigint generated always as identity primary key,
@@ -62,6 +65,8 @@ create table if not exists public.suggestions (
   created_at   timestamptz not null default now()
 );
 create index if not exists suggestions_page_idx on public.suggestions (page_id, created_at desc);
+alter table public.suggestions add column if not exists base_hash text;
+alter table public.suggestions add column if not exists reviewed_at timestamptz;
 
 /* ---------------- access: everyone reads; writes only through the functions below ---------------- */
 alter table public.pages        enable row level security;
@@ -75,7 +80,6 @@ drop policy if exists "suggestions are public" on public.suggestions;
 create policy "pages are public"       on public.pages        for select to anon, authenticated using (true);
 create policy "aliases are public"     on public.page_aliases for select to anon, authenticated using (true);
 create policy "history is public"      on public.revisions    for select to anon, authenticated using (true);
-create policy "suggestions are public" on public.suggestions  for select to anon, authenticated using (true);
 
 /* ---------------- reading ---------------- */
 -- a page by name or alternative name (case-insensitive)
@@ -166,12 +170,40 @@ $$;
 /* ---------------- writing (signed-in users) ---------------- */
 create or replace function public.author_name() returns text
 language sql stable security definer set search_path = public as $$
-  select coalesce(nullif(btrim(raw_user_meta_data ->> 'name'), ''), split_part(email, '@', 1), 'anonymous')
-  from auth.users where id = auth.uid();
+  select coalesce(p.display_name, nullif(btrim(u.raw_user_meta_data ->> 'name'), ''), split_part(u.email, '@', 1), 'anonymous')
+  from auth.users u left join public.profiles p on p.user_id = u.id
+  where u.id = auth.uid();
 $$;
 
 -- Publish a page. New pages, sandboxes and pages started on this site are edited directly;
 -- other nLab pages take suggestions (see suggest_edit).
+-- The first revision records the author, even after later edits by other people.
+create or replace function public.page_author(p_id bigint)
+returns uuid language sql stable set search_path = public as $$
+  select author from revisions where page_id = p_id order by id limit 1
+$$;
+revoke all on function public.page_author(bigint) from public;
+
+create or replace function public.owns_page(p_name text)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from pages p where lower(p.name) = lower(btrim(p_name))
+      and p.origin = 'site' and p.mirror_dir is null and page_author(p.id) = auth.uid()
+  )
+$$;
+revoke all on function public.owns_page(text) from public;
+grant execute on function public.owns_page(text) to authenticated;
+
+create or replace function public.my_publications()
+returns table (name text, updated_at timestamptz)
+language sql stable security definer set search_path = public as $$
+  select p.name, p.updated_at from pages p
+  where p.origin = 'site' and p.mirror_dir is null and page_author(p.id) = auth.uid()
+  order by p.updated_at desc, p.name
+$$;
+revoke all on function public.my_publications() from public;
+grant execute on function public.my_publications() to authenticated;
+
 create or replace function public.save_page(p_name text, p_source text, p_summary text default '', p_links text[] default '{}', p_note text default '')
 returns table (name text, updated_at timestamptz)
 language plpgsql security definer set search_path = public as $$
@@ -185,14 +217,15 @@ begin
   if char_length(btrim(p_name)) = 0 or char_length(p_name) > 300 then raise exception 'Please give the page a title.'; end if;
   if char_length(p_source) > 2000000 then raise exception 'This page is too long to publish.'; end if;
   who := author_name();
-  select * into pg from pages where lower(pages.name) = lower(btrim(p_name));
+  select * into pg from pages where lower(pages.name) = lower(btrim(p_name)) for update;
   if not found then
     insert into pages (name, source, kind, summary, links, origin, updated_by, updated_by_name)
     values (btrim(p_name), p_source, case when btrim(p_name) ~* 'sandbox' then 's' else 'c' end, left(coalesce(p_summary, ''), 400),
             coalesce(p_links, '{}'), 'site', uid, who)
     returning id into pid;
   else
-    if pg.origin = 'mirror' and pg.name !~* '^sandbox[0-9]*$' then
+    if pg.name !~* '^sandbox[0-9]*$' and
+       (pg.origin = 'mirror' or pg.mirror_dir is not null or page_author(pg.id) is distinct from uid) then
       raise exception 'This nLab page takes suggestions: use “Suggest an edit”.' using errcode = '42501';
     end if;
     update pages set source = p_source, summary = left(coalesce(nullif(p_summary, ''), pages.summary), 400),
@@ -205,21 +238,87 @@ begin
 end $$;
 
 -- Suggest an edit to an existing page; authors review suggestions on the site.
-create or replace function public.suggest_edit(p_name text, p_source text, p_note text default '')
+create or replace function public.suggest_edit(p_name text, p_source text, p_note text, p_base_source text)
 returns bigint
 language plpgsql security definer set search_path = public as $$
-declare uid uuid := auth.uid(); pid bigint; sid bigint;
+declare uid uuid := auth.uid(); pid bigint; sid bigint; base text;
 begin
   if uid is null then raise exception 'Please sign in to suggest an edit.' using errcode = '28000'; end if;
-  select id into pid from pages where lower(name) = lower(btrim(p_name));
+  select id, md5(source) into pid, base from pages where lower(name) = lower(btrim(p_name));
   if pid is null then raise exception 'There is no page called %.', p_name; end if;
+  if p_base_source is not null and md5(p_base_source) <> base then
+    raise exception 'The published page changed. Reopen it before sending this suggestion.';
+  end if;
   if (select count(*) from suggestions where author = uid and created_at > now() - interval '1 hour') >= 20 then
     raise exception 'That is a lot of suggestions: please wait a little before sending more.';
   end if;
-  insert into suggestions (page_id, source, author, author_name, note)
-  values (pid, p_source, uid, author_name(), left(coalesce(p_note, ''), 2000)) returning id into sid;
+  insert into suggestions (page_id, source, author, author_name, note, base_hash)
+  values (pid, p_source, uid, author_name(), left(coalesce(p_note, ''), 2000), base) returning id into sid;
   return sid;
 end $$;
+create or replace function public.suggest_edit(p_name text, p_source text, p_note text default '')
+returns bigint language sql security definer set search_path = public as $$
+  select public.suggest_edit(p_name, p_source, p_note, null)
+$$;
+revoke all on function public.suggest_edit(text, text, text, text) from public;
+grant execute on function public.suggest_edit(text, text, text, text) to authenticated;
+
+create or replace function public.suggestions_inbox()
+returns table (id bigint, name text, author_name text, note text, status text,
+               created_at timestamptz, reviewed_at timestamptz, source text,
+               current_source text, stale boolean)
+language sql stable security definer set search_path = public as $$
+  select s.id, p.name, s.author_name, s.note, s.status, s.created_at, s.reviewed_at, s.source,
+         case when s.status = 'open' then p.source end,
+         coalesce(s.base_hash <> md5(p.source), p.updated_at > s.created_at)
+  from suggestions s join pages p on p.id = s.page_id
+  where p.origin = 'site' and p.mirror_dir is null and page_author(p.id) = auth.uid()
+  order by (s.status = 'open') desc, s.created_at desc
+$$;
+
+create or replace function public.review_suggestion(p_id bigint, p_accept boolean, p_current_source text,
+                                                    p_summary text, p_links text[])
+returns void language plpgsql security definer set search_path = public as $$
+declare
+  pg pages%rowtype;
+  proposed suggestions%rowtype;
+begin
+  select p.* into pg from pages p join suggestions s on s.page_id = p.id
+    where s.id = p_id and p.origin = 'site' and p.mirror_dir is null and page_author(p.id) = auth.uid()
+    for update of p;
+  if not found then raise exception 'Only the page author can review this suggestion.' using errcode = '42501'; end if;
+  select * into proposed from suggestions where id = p_id for update;
+  if proposed.status <> 'open' then raise exception 'This suggestion has already been reviewed.'; end if;
+  if p_accept then
+    if pg.source is distinct from p_current_source or
+       coalesce(proposed.base_hash <> md5(pg.source), pg.updated_at > proposed.created_at) then
+      raise exception 'The published page changed. Ask for a new suggestion based on the current version.';
+    end if;
+    update pages set source = proposed.source, summary = left(coalesce(p_summary, ''), 400),
+      links = coalesce(p_links, '{}'), updated_at = now(), updated_by = proposed.author,
+      updated_by_name = proposed.author_name where id = pg.id;
+    insert into revisions (page_id, source, author, author_name, note)
+    values (pg.id, proposed.source, proposed.author, proposed.author_name,
+            left('Accepted suggestion. ' || proposed.note, 500));
+  end if;
+  update suggestions set status = case when p_accept then 'accepted' else 'declined' end,
+    reviewed_at = now() where id = p_id;
+end $$;
+revoke all on function public.suggestions_inbox(), public.review_suggestion(bigint, boolean, text, text, text[]) from public;
+grant execute on function public.suggestions_inbox(), public.review_suggestion(bigint, boolean, text, text, text[]) to authenticated;
+
+create or replace function public.delete_reviewed_suggestion(p_id bigint)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  delete from suggestions s using pages p
+  where s.id = p_id and s.status in ('accepted', 'declined') and s.page_id = p.id
+    and p.origin = 'site' and p.mirror_dir is null and page_author(p.id) = auth.uid();
+  if not found then
+    raise exception 'Only the page author can delete a reviewed suggestion.' using errcode = '42501';
+  end if;
+end $$;
+revoke all on function public.delete_reviewed_suggestion(bigint) from public;
+grant execute on function public.delete_reviewed_suggestion(bigint) to authenticated;
 
 /* ---------------- loading the nLab (service key only: scripts/db-import.mjs) ---------------- */
 -- Adds or refreshes pages from the nLab mirror. Pages edited on this site are left alone.

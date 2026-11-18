@@ -3,6 +3,8 @@
 //    made here). Fallback: the nLab content mirror on GitHub (github.com/ncatlab/nlab-content), served
 //    with CORS headers; snapshot/nlab-index.json (scripts/mirror-index.mjs) maps names to its files.
 import { dbEnabled, getPage } from './db.js';
+import { isExcludedPage } from './page-visibility.js';
+import { cacheArticle, invalidateArticleCache, readArticleCache } from './article-cache.js';
 //  • Latest changes and the nForum: live through the Vite proxy in dev; in the static build from
 //    the snapshot written by scripts/snapshot.mjs.
 export const ORIGIN = 'https://ncatlab.org';
@@ -69,12 +71,13 @@ export function loadIndex() {
   return (indexP ??= fetch('snapshot/nlab-index.json').then((r) => (r.ok ? r.json() : { pages: [] })).catch(() => ({ pages: [] })).then((idx) => {
     const byName = new Map();
     const alias = new Map();
-    for (const [dir, name, ...aliases] of idx.pages) {
+    const pages = idx.pages.filter(([, name]) => !isExcludedPage(name));
+    for (const [dir, name, ...aliases] of pages) {
       const e = { dir, name };
       byName.set(name.toLowerCase(), e);
       for (const a of aliases) if (!alias.has(a.toLowerCase())) alias.set(a.toLowerCase(), e);
     }
-    return { ...idx, byName, alias, count: idx.pages.length };
+    return { ...idx, pages, byName, alias, count: pages.length };
   }));
 }
 
@@ -103,19 +106,40 @@ async function fromDatabase(name) {
   }
   const row = await dbPages.get(key);
   if (!row) dbPages.delete(key);
-  return row && row.source ? { name: row.name, source: row.source, meta: { origin: row.origin, updatedAt: row.updated_at, updatedBy: row.updated_by_name, kind: row.kind } } : null;
+  return row && typeof row.source === 'string' ? { name: row.name, source: row.source, meta: { origin: row.origin, updatedAt: row.updated_at, updatedBy: row.updated_by_name, kind: row.kind } } : null;
 }
-export const forgetPage = (name) => { dbPages.delete(name.trim().toLowerCase()); };
+export const forgetPage = (name) => {
+  dbPages.delete(name.trim().toLowerCase());
+  invalidateArticleCache(name);
+};
 
-export async function fetchSource(name) {
+export async function findExistingTitle(name) {
+  return (await fromDatabase(name)) ?? (await resolvePage(name));
+}
+
+export async function fetchSource(name, { fresh = false } = {}) {
+  if (isExcludedPage(name)) throw new PageNotFound(name);
+  if (!fresh) {
+    const cached = readArticleCache(name);
+    if (cached && !isExcludedPage(cached.name)) return cached;
+  }
   const fromDb = await fromDatabase(name);
-  if (fromDb) return fromDb;
+  if (isExcludedPage(fromDb?.name)) throw new PageNotFound(name);
+  if (fromDb) {
+    if (fromDb.meta.origin === 'mirror') fromDb.meta.mirroredAt = (await loadIndex()).committed;
+    cacheArticle(name, fromDb);
+    return fromDb;
+  }
   const e = await resolvePage(name);
   if (!e) {
     if (LIVE) { // brand-new pages may not have reached the mirror yet
       const res = await fetch(`${API}/nlab/source/${encodeName(name)}`);
       const ta = res.ok && parse(await res.text()).querySelector('textarea#content');
-      if (ta) return { name, source: ta.value.replace(/^\n/, '') };
+      if (ta) {
+        const page = { name, source: ta.value.replace(/^\n/, '') };
+        cacheArticle(name, page);
+        return page;
+      }
     }
     throw new PageNotFound(name);
   }
@@ -126,7 +150,10 @@ export async function fetchSource(name) {
     }));
   }
   try {
-    return { name: e.name, source: await sourceCache.get(e.dir) };
+    const page = { name: e.name, source: await sourceCache.get(e.dir), meta: { origin: 'mirror', mirroredAt: (await loadIndex()).committed } };
+    cacheArticle(name, page);
+    if (e.name !== name && e.name.toLowerCase() !== name.toLowerCase()) cacheArticle(e.name, page);
+    return page;
   } catch (err) { sourceCache.delete(e.dir); throw err; }
 }
 

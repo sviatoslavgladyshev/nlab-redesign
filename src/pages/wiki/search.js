@@ -4,6 +4,7 @@ import { icons } from '../../ui/app.js';
 import { esc, pageUrl, displayTitle } from '../../core/nlab.js';
 import { allTopics } from '../../core/forum-data.js';
 import { dbEnabled, smartSearch } from '../../core/db.js';
+import { isExcludedPage } from '../../core/page-visibility.js';
 import { $, $$, params, setHero, link, rel } from './shell.js';
 
 /* ---------------- Search ---------------- */
@@ -155,7 +156,7 @@ export async function renderSearch(q0) {
       const rows = await smartSearch(toWebSearch(qq), { field: st.field, limit: 60 });
       if (my !== seq) return;
       const have = new Set(st.hits.map((h) => h.name.toLowerCase()));
-      const extra = rows.filter((r) => !have.has(r.name.toLowerCase())).map((r) => ({
+      const extra = rows.filter((r) => !isExcludedPage(r.name) && !have.has(r.name.toLowerCase())).map((r) => ({
         name: r.name, kind: r.kind, summary: r.summary, inbound: r.inbound, fields: r.fields, aliases: [],
         score: 40 + (r.score ?? r.rank) * 60, snippet: r.snippet, inText: r.by_words, byMeaning: r.by_meaning && !r.by_words,
       }));
