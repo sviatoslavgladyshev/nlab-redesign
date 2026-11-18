@@ -42,6 +42,47 @@ function numberEnvs(root) {
   let n = 0;
   root.querySelectorAll('[class^="num_"] > h6, [class*=" num_"] > h6').forEach((h) => { n += 1; if (!/\d/.test(h.textContent)) h.textContent = `${h.textContent.trim()} ${n}`; });
 }
+/* Card previews: the first sentences of the linked page's "Idea", loaded when the card scrolls into view */
+const excerpts = new Map();
+function excerptFor(name) {
+  if (!excerpts.has(name)) {
+    excerpts.set(name, (async () => {
+      try { const c = sessionStorage.getItem(`nlab-ex:${name}`); if (c != null) return c; } catch { /* ignore */ }
+      const { source } = await fetchSource(name);
+      const body = source.replace(/^\s*\+--[^\n]*rightHandSide[\s\S]*?\n=--\s*\n=--\s*\n=--/m, '');
+      const part = body.split(/^#{2,3}\s+(?:Idea|Definition|Statement)\b.*$/m)[1] || body;
+      const para = part.split(/\n\s*\n/).map((x) => x.trim())
+        .find((x) => x.length > 50 && !/^([+#*{=<|>\-]|\$\$|\\\[|\[\[!)/.test(x) && !/^\s*\{:/.test(x)) || '';
+      // split into sentences without breaking inside formulas or after "cor.", "def.", "e.g."…
+      const math = [];
+      const flat = para.replace(/\s+/g, ' ').replace(/\$[^$]*\$/g, (m) => `\u0001${math.push(m) - 1}\u0002`);
+      const sentences = flat.split(/(?<=[.!?])\s+(?=[A-Z_*[])/);
+      let out = '';
+      for (const t of sentences) { if ((out + t).length > 230 && out) break; out += `${t} `; }
+      out = out.replace(/\u0001(\d+)\u0002/g, (_, i) => math[+i]);
+      const html = out ? renderSource(out.trim()) : '';
+      try { sessionStorage.setItem(`nlab-ex:${name}`, html); } catch { /* full */ }
+      return html;
+    })().catch(() => ''));
+  }
+  return excerpts.get(name);
+}
+const previewIO = new IntersectionObserver((entries) => {
+  entries.forEach(async (e) => {
+    if (!e.isIntersecting) return;
+    previewIO.unobserve(e.target);
+    const a = e.target;
+    const box = a.querySelector('.ll-ex');
+    if (a.classList.contains('missing')) { box.innerHTML = '<em>Not written yet. Be the first to write it.</em>'; return; }
+    const html = await excerptFor(a.dataset.wiki.split('#')[0]);
+    if (!html) { box.remove(); return; }
+    box.innerHTML = html;
+    box.querySelectorAll('a').forEach((x) => x.replaceWith(...x.childNodes));
+    box.querySelectorAll('p').forEach((x) => x.replaceWith(...x.childNodes, ' '));
+    box.classList.add('in');
+  });
+}, { rootMargin: '300px' });
+
 // Bullet lists that are only links to other pages ("Related entries", "Basic facts"…) become a card grid
 function linkLists(root) {
   const linksOf = (li) => [...li.querySelectorAll(':scope > a[href], :scope > p > a[href]')];
@@ -59,8 +100,14 @@ function linkLists(root) {
     items.forEach((li) => {
       const links = linksOf(li);
       if (links.length === 1) {
-        links[0].insertAdjacentHTML('beforeend', '<span class="ll-go" aria-hidden="true">→</span>');
-        li.replaceChildren(links[0]);
+        const a = links[0];
+        const title = document.createElement('span');
+        title.className = 'll-t';
+        title.append(...a.childNodes);
+        a.append(title);
+        if (a.dataset.wiki) { a.insertAdjacentHTML('beforeend', '<span class="ll-ex"><span class="ll-skel"></span><span class="ll-skel short"></span></span>'); previewIO.observe(a); }
+        a.insertAdjacentHTML('beforeend', '<span class="ll-go" aria-hidden="true">→</span>');
+        li.replaceChildren(a);
       } else {
         li.classList.add('ll-multi');
         li.replaceChildren(...links.flatMap((a, i) => (i ? [document.createTextNode(' · '), a] : [a])));

@@ -110,6 +110,9 @@ function elementToSource(el) {
   return inline(el).trim();
 }
 
+// Fingerprint of rendered elements; ignores inline styles the browser may add while editing
+const fp = (els) => els.map((e) => e.outerHTML).join('').replace(/ style="[^"]*"/g, '');
+
 /* ---------- The visual document ---------- */
 export class VisualDoc {
   constructor(root, { onChange, onActive } = {}) {
@@ -155,7 +158,7 @@ export class VisualDoc {
     this.root.querySelectorAll('.m').forEach((m) => { m.contentEditable = 'false'; });
     icons();
     this.fingerprints = new Map();
-    this.groups().forEach((els, i) => this.fingerprints.set(i, els.map((e) => e.outerHTML).join('')));
+    this.groups().forEach((els, i) => this.fingerprints.set(i, fp(els)));
   }
 
   // DOM nodes for one block. Rendered HTML is parsed inside its own container,
@@ -218,7 +221,7 @@ export class VisualDoc {
       if (b != null && this.blocks[b]) {
         if (done.has(b)) continue;
         const els = kids.filter((x) => x.dataset.b === String(b));
-        if (el.classList.contains('v-island') || els.map((e) => e.outerHTML).join('') === this.fingerprints.get(b)) {
+        if (el.classList.contains('v-island') || fp(els) === this.fingerprints.get(b)) {
           done.add(b);
           if (this.blocks[b].src.trim()) out.push({ ...this.blocks[b] });
           continue;
