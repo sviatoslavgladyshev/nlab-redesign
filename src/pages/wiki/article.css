@@ -5,9 +5,7 @@
 .article-page {
   --text: 'Source Serif 4 Variable', 'Iowan Old Style', Georgia, serif;
   --ui: 'Inter Variable', Roboto, Arial, sans-serif;
-  --link: #1d4f91;
-  --tonal: #dce6f5;
-  --on-tonal: #0c2147;
+  --link: var(--primary);
   background: var(--paper);
 }
 

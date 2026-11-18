@@ -244,10 +244,10 @@ body.ws-open { overflow: hidden; }
 
 /* ---------- Write an article ---------- */
 .w-form { max-width: 760px; font-family: var(--ui); }
-.w-title { display: flex; flex-direction: column; gap: 8px; font: 600 14px var(--ui); color: var(--ink-2); }
+.w-title { display: flex; flex-direction: column; gap: 12px; font: 600 14px var(--ui); color: var(--ink-2); }
 .w-title input { font: 600 26px var(--display); height: 64px; padding: 0 20px; border-radius: 16px; border: 1px solid var(--outline); color: var(--ink); background: var(--surface, #fff); }
 .w-title input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px rgba(29, 79, 145, .12); }
-.w-hint { margin: 8px 0 26px; font-size: 13.5px; color: var(--muted); }
+.a-body .w-hint { margin: 12px 0 28px; font-size: 13.5px; line-height: 1.5; color: var(--muted); }
 .w-hint a { color: var(--primary); font-weight: 600; }
 .w-tpls { border: 0; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .w-tpls legend { font: 600 14px var(--ui); color: var(--ink-2); margin-bottom: 8px; }

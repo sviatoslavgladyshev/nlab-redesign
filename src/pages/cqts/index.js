@@ -115,9 +115,7 @@ function decoratePeople() {
     if (!slug || heading.querySelector('a')) return;
     const a = document.createElement('a'); a.href = `cqts/${slug}/`; a.className = 'cq-person-name'; a.textContent = heading.textContent; heading.replaceChildren(a);
     const links = heading.closest('article')?.querySelector('.cq-plinks');
-    if (links && !links.querySelector('.cq-profile-link')) {
-      const link = document.createElement('a'); link.href = `cqts/${slug}/`; link.className = 'cq-profile-link'; link.innerHTML = '<i data-lucide="arrow-right"></i>See more'; links.prepend(link);
-    }
+    links?.querySelectorAll('.cq-profile-link').forEach((link) => link.remove());
     // The university profile is available inside the local person page; keep cards focused on “See more”.
     links?.querySelectorAll('a[target="_blank"]').forEach((link) => link.remove());
     links?.querySelectorAll('a[href^="wiki/"]').forEach((link) => link.remove());
@@ -147,14 +145,27 @@ function render(pg) {
   page = pg;
   document.documentElement.dataset.cq = profileSlug ? 'profile' : pg || 'home';
   heroTitle.style.visibility = '';
-  // CQTS has its own section tabs below the site header; keep the global CQTS link neutral.
-  document.querySelector('.nav-links a[href="cqts/"]')?.removeAttribute('aria-current');
+  // the top bar shows CQTS as the current section, with the same pill as on hover
+  document.querySelector('.nav-links a[href="cqts/"]')?.setAttribute('aria-current', 'page');
   const profile = profileSlug ? PEOPLE[profileSlug] : null;
+  const navPage = ({ 'symposium-2026': 'events', activities: 'events', colloquium: 'events', archive: 'materials' })[pg] || pg;
   document.querySelectorAll('[data-page]').forEach((el) => {
-    if (el.matches('.tabs a')) { el.toggleAttribute('aria-current', el.dataset.page === pg); if (el.dataset.page === pg) el.setAttribute('aria-current', 'page'); return; }
+    if (el.matches('.tabs a')) { el.toggleAttribute('aria-current', el.dataset.page === navPage); if (el.dataset.page === navPage) el.setAttribute('aria-current', 'page'); return; }
     const dp = el.dataset.page;
     el.hidden = profile ? true : pg ? dp !== pg : !(dp === '' || dp === 'research');
   });
+  document.querySelector('.cq-section-nav')?.remove();
+  const sectionLinks = navPage === 'events'
+    ? [['events', 'Events'], ['symposium-2026', 'Symposium 2026'], ['colloquium', 'Colloquium'], ['activities', 'Activities']]
+    : navPage === 'materials' ? [['materials', 'Materials'], ['archive', 'Archive']] : [];
+  if (sectionLinks.length && !profile) {
+    const subnav = document.createElement('nav');
+    subnav.className = 'cq-section-nav wrap';
+    subnav.setAttribute('aria-label', navPage === 'events' ? 'Event sections' : 'Material sections');
+    const sectionIcons = { events: 'calendar', 'symposium-2026': 'presentation', colloquium: 'messages-square', activities: 'radio', materials: 'book-open', archive: 'history' };
+    subnav.innerHTML = sectionLinks.map(([slug, label]) => `<a href="cqts/${slug}/"${pg === slug ? ' aria-current="page"' : ''}><i data-lucide="${sectionIcons[slug]}" aria-hidden="true"></i>${label}</a>`).join('');
+    document.querySelector('.cq-tabs').after(subnav);
+  }
   const profileSection = document.getElementById('person-profile');
   if (profileSection) profileSection.hidden = !profile;
   document.body.classList.toggle('cq-sub', !!pg || !!profile);
@@ -177,7 +188,11 @@ function render(pg) {
     heroCrumbs.innerHTML = homeCrumbs;
     document.title = 'Center for Quantum and Topological Systems (CQTS) — NYU Abu Dhabi';
   }
-  document.querySelector('.tabs a[aria-current]')?.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+  const activeTab = document.querySelector('.tabs a[aria-current]');
+  if (activeTab) {
+    const tabs = activeTab.parentElement;
+    tabs.scrollTo({ left: activeTab.offsetLeft - tabs.offsetLeft - (tabs.clientWidth - activeTab.offsetWidth) / 2, behavior: 'instant' });
+  }
   dispatchEvent(new Event('resize')); // let the hero canvas re-measure
   icons();
   decoratePeople();
@@ -187,17 +202,16 @@ render(page);
 if (profileSlug) requestAnimationFrame(() => scrollTo({ top: 0, behavior: 'instant' }));
 if (page && location.hash) requestAnimationFrame(() => document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView({ block: 'center' }));
 
-// Smooth switching between CQTS pages: no reload, cross-fade, keep the tab bar in view
+// Switch CQTS pages with a cross-fade and start each destination at the top.
 function go(pg, push = true, profile = '') {
-  if (pg === page && profile === profileSlug) return;
-  const tabsTop = document.querySelector('.cq-tabs').getBoundingClientRect().top + scrollY - 64;
-  const below = scrollY > tabsTop - 4;
+  if (pg === page && profile === profileSlug) {
+    scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    return;
+  }
   const swap = () => {
     profileSlug = profile;
     render(pg);
-    if (profile) { scrollTo({ top: 0, behavior: 'instant' }); return; }
-    // stay at the tab bar if we were reading below it, otherwise keep the hero visible
-    scrollTo({ top: below ? document.querySelector('.cq-tabs').getBoundingClientRect().top + scrollY - 64 : scrollY, behavior: 'instant' });
+    scrollTo({ top: 0, left: 0, behavior: 'instant' });
   };
   if (push) history.pushState({ cq: pg, profile }, '', new URL(profile ? `cqts/${profile}/` : pg ? `cqts/${pg}/` : 'cqts/', document.baseURI));
   if (!document.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) { swap(); return; }

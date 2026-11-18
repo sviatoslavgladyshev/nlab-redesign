@@ -1,5 +1,7 @@
 /* ===================== CQTS ===================== */
 .cqts-page { --cq-violet: #57068c; --cq-violet-2: #3b0a6b; --cq-blue: #2448b5; --cq-tint: #f4eefb; }
+[data-theme="prism"] .cqts-page .nav-links a:hover,
+[data-theme="prism"] .cqts-page .nav-links a[aria-current] { background: #fff; color: #57068c; box-shadow: none; }
 
 /* Hero */
 .cq-hero { position: relative; overflow: hidden; color: #fff; padding: 56px 0 64px;
@@ -45,6 +47,29 @@
 .cq-tabs .tabs a.on { color: var(--cq-violet); border-bottom-color: var(--cq-violet); }
 
 /* Sections */
+.cq-hero {
+  padding: 40px 0 44px;
+  background: radial-gradient(ellipse at 85% 35%, rgba(108,63,206,.48), transparent 52%),
+    radial-gradient(ellipse at 10% 100%, rgba(87,6,140,.48), transparent 60%), #100719;
+}
+.cq-hero .cq-lockup { margin: 20px 0 24px; padding: 12px 18px; border-radius: 14px; box-shadow: 0 8px 32px #0003; }
+.cq-hero-eyebrow { display: flex; align-items: center; gap: 9px; margin-bottom: 16px; color: #d8b4fe; font: 600 11px/1.5 var(--ui); letter-spacing: .1em; text-transform: uppercase; }
+.cq-hero-eyebrow span { width: 6px; height: 6px; border-radius: 50%; background: #c4a1ff; box-shadow: 0 0 14px #b488ff; }
+.cq-hero .cq-title { font-size: clamp(38px, 4.7vw, 64px); line-height: 1.08; text-wrap: balance; }
+.cq-hero .cq-title em { color: #d6bcfa; }
+.cq-hero .cq-lead { font-size: 16px; line-height: 1.65; max-width: min(620px, 56%); }
+.cq-hero .cq-cta { margin-top: 24px; gap: 8px; }
+.cq-hero .cq-btn { height: 42px; padding: 0 16px; font-size: 13px; }
+.cq-hero .cq-stats { max-width: 100%; grid-template-columns: repeat(4, minmax(0,1fr)); margin-top: 36px; border: 1px solid #ffffff20; background: #ffffff14; backdrop-filter: blur(16px); border-radius: 14px; }
+.cq-hero .cq-stats > div { background: #10071999; padding: 14px 20px; }
+.cq-hero .cq-stats dt { display: flex; align-items: center; gap: 9px; font-size: 21px; }
+.cq-hero .cq-stats dt svg { width: 19px; height: 19px; color: #d8b4fe; }
+.cq-hero .cq-stats dd { font-size: 12px; }
+.cq-sub .cq-hero-eyebrow { display: none; }
+@media (max-width: 900px) {
+  .cq-hero .cq-lead { max-width: 100%; }
+  .cq-hero .cq-stats { grid-template-columns: repeat(2, minmax(0,1fr)); }
+}
 .cq-section { padding: 88px 0; }
 .cq-section + .cq-section { border-top: 1px solid var(--rule); }
 .cq-alt { background: var(--cq-tint); }
@@ -228,6 +253,8 @@ a.cq-event:hover { box-shadow: 0 16px 40px rgba(40, 10, 80, .12); transform: tra
 .cq-alumni a, .cq-alumni span { padding: 8px 14px; border-radius: 999px; background: var(--cq-tint); font: 600 14px var(--ui); color: var(--cq-violet); }
 .cq-alumni span { color: var(--ink-2); background: var(--paper-2); }
 .cq-alumni a:hover { background: #e7dcf7; }
+html[data-mode="dark"] .cqts-page { --cq-violet: #d8b4fe; --link: #d8b4fe; }
+html[data-mode="dark"] .cq-alumni a:hover { background: #3a2850; }
 .cq-source { margin-top: 24px; font: 13px var(--ui); color: var(--muted); }
 .cq-source a { color: var(--cq-violet); font-weight: 600; }
 
@@ -250,7 +277,6 @@ a.cq-event:hover { box-shadow: 0 16px 40px rgba(40, 10, 80, .12); transform: tra
   --dg-hi: #57068c; --sh-focus: 0 0 0 4px rgba(87, 6, 140, .14);
 }
 .cqts-page .progress { background: linear-gradient(90deg, #57068c, #2448b5); }
-.cqts-page .nav-links a[aria-current] { background: var(--tonal); color: var(--on-tonal); }
 .cqts-page .nav-search:focus-within { box-shadow: 0 0 0 3px rgba(87, 6, 140, .15); }
 .cqts-page .tbtn.primary, .cqts-page .nav-write { background: var(--primary); border-color: var(--primary); }
 .cqts-page .nav-join { color: var(--primary); }
@@ -342,6 +368,12 @@ html[data-mode="dark"] .cq-tabs .tabs a[aria-current="page"] { color: #c9a6f5; b
 html[data-mode="dark"] .cq-tile.featured { background: linear-gradient(135deg, #3b0a6b, #2448b5); }
 /* Person profiles */
 .cq-person-name { color: inherit; text-decoration: none; }
+.cq-section-nav { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; padding-top: 18px; padding-bottom: 18px; }
+.cq-tabs .tabs { justify-content: safe center; }
+.cq-tabs .tabs a, .cq-section-nav a { display: inline-flex; align-items: center; gap: 8px; }
+.cq-tabs .tabs a svg, .cq-section-nav a svg { width: 16px; height: 16px; flex: none; }
+.cq-section-nav a { padding: 8px 14px; border-radius: 999px; font: 500 13px var(--ui); color: var(--muted); }
+.cq-section-nav a:hover, .cq-section-nav a[aria-current] { background: var(--tonal); color: var(--on-tonal); }
 .cq-person-name:hover { color: var(--cq-violet); }
 .cq-person[role="link"], .cq-director[role="link"] { cursor: pointer; }
 .cq-person[role="link"]:focus-visible, .cq-director[role="link"]:focus-visible { outline: 3px solid var(--cq-violet); outline-offset: 5px; }
@@ -376,8 +408,68 @@ img.cq-av.photo.big { width: 112px; height: 112px; box-shadow: 0 0 0 4px rgba(25
 .cq-person:has(img.photo) { align-items: center; }
 html[data-mode="dark"] img.cq-av.photo { box-shadow: 0 0 0 3px var(--surface); }
 img.cq-av.photo { object-position: 50% 18%; }
-.cq-grid { grid-template-columns: repeat(auto-fill, minmax(min(270px, 100%), 1fr)); }
+.cq-grid { grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr)); gap: 16px; }
 .cq-person, .cq-person > div { min-width: 0; }
+.cq-grid .cq-person {
+  flex-direction: column; align-items: flex-start; gap: 20px;
+  padding: 26px; border-radius: 20px;
+}
+.cq-grid .cq-person > .cq-av { width: 72px; height: 72px; font-size: 24px; }
+.cq-grid .cq-person > div { width: 100%; flex: 1; }
+.cq-grid .cq-person h4 {
+  display: block; overflow: visible; -webkit-line-clamp: unset;
+  min-height: 0; font-size: 22px; line-height: 1.25;
+  text-wrap: balance; overflow-wrap: anywhere;
+}
+.cq-grid .cq-person p {
+  display: block; overflow: visible; -webkit-line-clamp: unset;
+  min-height: 0; margin-top: 6px; font-size: 14px; line-height: 1.4;
+}
+.cq-grid .cq-person > div {
+  display: grid; grid-template-columns: minmax(0, 1fr);
+  column-gap: 12px; align-items: center;
+}
+.cq-grid .cq-person h4, .cq-grid .cq-person p { grid-column: 1; }
+.cq-grid .cq-person .cq-plinks {
+  grid-column: 2; grid-row: 1 / span 2; align-self: center;
+  justify-content: flex-end; margin: 0; padding: 0;
+}
+.cq-grid .cq-person .cq-plinks a { white-space: nowrap; }
+/* Portrait cards: keep the original image accessible and use it as the backdrop. */
+.cq-grid .cq-person:has(> img.photo) {
+  position: relative; isolation: isolate; overflow: hidden;
+  min-height: 320px; padding: 20px; justify-content: flex-end;
+  background: #171219; border-color: rgba(255,255,255,.14);
+}
+.cq-grid .cq-person > img.cq-av.photo {
+  position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%;
+  border-radius: 0; object-fit: cover; object-position: center 20%;
+  box-shadow: none; transition: transform .5s ease;
+}
+.cq-grid .cq-person:has(> img.photo)::after {
+  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(180deg, rgba(0,0,0,.02) 20%, rgba(0,0,0,.25) 42%, rgba(0,0,0,.85) 72%, #080608 100%);
+}
+.cq-grid .cq-person:has(> img.photo) > div { flex: 0; }
+.cq-grid .cq-person:has(> img.photo) h4 { color: #fff; text-shadow: 0 2px 12px rgba(0,0,0,.4); }
+.cq-grid .cq-person:has(> img.photo) p { color: #e5dfe9; }
+.cq-grid .cq-person:has(> img.photo) .cq-plinks a {
+  color: #ead5ff; background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.3);
+  padding: 7px 15px; backdrop-filter: blur(8px);
+}
+.cq-grid .cq-person:has(> img.photo) .cq-plinks a:hover { background: rgba(255,255,255,.2); }
+.cq-grid .cq-person:hover > img.cq-av.photo { transform: scale(1.035); }
+.cq-grid .cq-person:not(:has(> img.photo)) { min-height: 320px; justify-content: flex-end; background: linear-gradient(145deg, var(--cq-tint), var(--surface)); }
+.cq-grid .cq-person[data-profile="tim-byrnes"] > img.cq-av.photo {
+  object-fit: contain; object-position: center top; background: #b6b9b0;
+}
+.cq-grid .cq-person:not(:has(> img.photo)) > div { flex: 0; }
+@media (prefers-reduced-motion: reduce) { .cq-grid .cq-person:hover > img.cq-av.photo { transform: none; } }
+@media (max-width: 620px) {
+  .cq-grid, .cq-grid.cq-grid-leads { grid-template-columns: 1fr; }
+  .cq-grid .cq-person { padding: 22px; gap: 16px; }
+  .cq-grid .cq-person h4, .cq-grid .cq-person p { min-height: 0; }
+}
 @media (max-width: 760px) {
   .cq-field { opacity: .22; }
   .cq-hero { min-height: 0; padding: 32px 0 40px; }
