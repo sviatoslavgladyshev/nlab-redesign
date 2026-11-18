@@ -1,12 +1,12 @@
 // Home page: shared behaviour + live widgets (recent edits, featured excerpt, page count,
 // random page, "find or create a page", and a working LaTeX editor demo).
-import './main.js';
+import '../../ui/app.js';
 import './home.css';
-import { esc, clean, pageUrl, fetchSource, loadIndex, displayTitle } from './nlab.js';
-import { attachSuggest, randomPage, loadNames, pageExists } from './suggest.js';
-import { latestEdits } from './forum-data.js';
-import credits from './data/credits.json';
-import { heroField } from './hero-field.js';
+import { esc, clean, pageUrl, fetchSource, loadIndex, displayTitle } from '../../core/nlab.js';
+import { attachSuggest, randomPage, loadNames, pageExists } from '../../ui/suggest.js';
+import { latestEdits } from '../../core/forum-data.js';
+import credits from '../../data/credits.json';
+import { heroField } from './knowledge-graph.js';
 
 const $ = (s) => document.querySelector(s);
 
@@ -64,7 +64,7 @@ async function renderFeatured() {
   const box = $('#featured-excerpt');
   if (!box) return;
   try {
-    const { renderSource } = await import('./markup.js');
+    const { renderSource } = await import('../../core/markup.js');
     const { source } = await fetchSource(decodeURIComponent(box.dataset.page.replace(/\+/g, ' ')));
     const idea = source.split(/^##\s+Idea\s*$/m)[1];
     const para = idea?.split(/\n\s*\n/).map((p) => p.trim()).find((p) => p.length > 60 && !/^[$+#*{]/.test(p));
@@ -85,7 +85,7 @@ if (tryBox) {
   const io = new IntersectionObserver(async ([e]) => {
     if (!e.isIntersecting) return;
     io.disconnect();
-    const [{ createSourceEditor }, { renderSource }] = await Promise.all([import('./cm.js'), import('./markup.js')]);
+    const [{ createSourceEditor }, { renderSource }] = await Promise.all([import('../../ui/codemirror.js'), import('../../core/markup.js')]);
     await import('katex/dist/katex.min.css');
     const ta = $('#try-src');
     const out = $('#try-out');

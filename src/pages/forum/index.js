@@ -1,11 +1,11 @@
 // Forum: a custom front end for the nForum (Zulip), in the site's own design.
-import { icons } from './main.js';
+import { icons } from '../../ui/app.js';
 import './forum.css';
 import 'katex/dist/katex.min.css';
-import { FORUM, esc, clean, pageUrl } from './nlab.js';
-import * as F from './forum-data.js';
-import { createSourceEditor } from './cm.js';
-import { openAccount } from './account.js';
+import { FORUM, esc, clean, pageUrl } from '../../core/nlab.js';
+import * as F from '../../core/forum-data.js';
+import { createSourceEditor } from '../../ui/codemirror.js';
+import { openAccount } from '../../ui/account.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const main = $('#f-main');

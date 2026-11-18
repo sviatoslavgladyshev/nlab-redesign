@@ -1,6 +1,6 @@
 // Short previews of pages (first sentences of their "Idea"), for cards in articles and the library.
-import { fetchSource } from './nlab.js';
-import { renderSource } from './markup.js';
+import { fetchSource } from '../core/nlab.js';
+import { renderSource } from '../core/markup.js';
 
 const excerpts = new Map();
 export function excerptFor(name) {

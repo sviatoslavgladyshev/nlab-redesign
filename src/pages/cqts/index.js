@@ -1,8 +1,8 @@
 // CQTS page: shared behaviour + tab highlighting while scrolling.
-import './main.js';
+import '../../ui/app.js';
 import './cqts.css';
-import credits from './data/credits.json';
-import { icons } from './main.js';
+import credits from '../../data/credits.json';
+import { icons } from '../../ui/app.js';
 
 /* ---------- People: official CQTS / NYU profile facts ---------- */
 const PEOPLE = {

@@ -2,18 +2,18 @@
 //   Visual — type into the page as normal text (formatting bar, formula box, symbol palette)
 //   LaTeX  — the page source with highlighting, line numbers and autocomplete, beside a live preview
 // Drafts save automatically in this browser; "Publish" walks through sending them to the nLab.
-import { icons } from './main.js';
-import { esc, clean, ORIGIN, encodeName } from './nlab.js';
-import { renderSource, diffLines, resolveRefs } from './markup.js';
-import { createSourceEditor, setDoc, FORMAT, envSource, ENVS } from './cm.js';
+import { icons } from '../../ui/app.js';
+import { esc, clean, ORIGIN, encodeName } from '../../core/nlab.js';
+import { renderSource, diffLines, resolveRefs } from '../../core/markup.js';
+import { createSourceEditor, setDoc, FORMAT, envSource, ENVS } from '../../ui/codemirror.js';
 import { VisualDoc } from './visual.js';
-import { loadNames } from './suggest.js';
+import { loadNames } from '../../ui/suggest.js';
 import katex from 'katex';
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 
-import { drafts } from './drafts.js';
+import { drafts } from '../../core/drafts.js';
 export { drafts };
 const MODE_KEY = 'nlab-editor-mode';
 

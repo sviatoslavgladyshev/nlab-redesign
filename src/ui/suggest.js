@@ -1,6 +1,6 @@
 // Instant page-name suggestions for every search box, from the list of all nLab pages
 // (snapshot/pages.json, written by scripts/snapshot.mjs). Arrow keys + Enter, Esc to close.
-import { pageUrl, esc } from './nlab.js';
+import { pageUrl, esc } from '../core/nlab.js';
 
 let names, loaded = [];
 export const loadNames = () => (names ??= fetch('snapshot/pages.json')

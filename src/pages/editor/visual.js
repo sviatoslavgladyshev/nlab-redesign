@@ -4,10 +4,10 @@
 // context sidebar…) are embedded cards that open a LaTeX editor in place. Blocks that are not
 // touched keep their exact original source, so visual editing never rewrites unrelated text.
 import katex from 'katex';
-import { renderSource } from './markup.js';
-import { clean, esc, pageUrl, decodeName } from './nlab.js';
-import { createSourceEditor } from './cm.js';
-import { icons } from './main.js';
+import { renderSource } from '../../core/markup.js';
+import { clean, esc, pageUrl, decodeName } from '../../core/nlab.js';
+import { createSourceEditor } from '../../ui/codemirror.js';
+import { icons } from '../../ui/app.js';
 
 /* ---------- Splitting source into blocks ---------- */
 export function splitBlocks(src) {

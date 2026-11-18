@@ -2,8 +2,8 @@
 // nLab community accounts are nForum accounts: signing in here talks directly to
 // nforum.ncatlab.org and keeps only an API key in this browser. New accounts are created on
 // the nForum's own sign-up page (it confirms the email address), then used here.
-import { auth, signIn, signOut } from './forum-data.js';
-import { esc, FORUM } from './nlab.js';
+import { auth, signIn, signOut } from '../core/forum-data.js';
+import { esc, FORUM } from '../core/nlab.js';
 
 const initials = (n) => n.split(/\s+/).map((w) => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
 const hue = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);

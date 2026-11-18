@@ -1,6 +1,6 @@
 // nLab redesign — shared behaviour (icons, reveal, nav, search, hero diagram)
-import './style.css';
-import './themes.css';
+import '../styles/base.css';
+import '../styles/theme.css';
 import { attachSuggest } from './suggest.js';
 import './account.js';
 import {

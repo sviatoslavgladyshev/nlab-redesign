@@ -1,7 +1,7 @@
 // Home hero: a slowly turning 3D constellation of the nLab's most-linked concepts.
 // Nodes are coloured by field, joined to their nearest neighbours, react to the pointer and
 // open their page on click. Scrolling zooms the constellation in while the hero text lifts away.
-import { pageUrl, displayTitle } from './nlab.js';
+import { pageUrl, displayTitle } from '../../core/nlab.js';
 
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 

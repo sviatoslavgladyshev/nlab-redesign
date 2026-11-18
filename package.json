@@ -8,7 +8,8 @@
     "snapshot": "node scripts/mirror-index.mjs && node scripts/tikz-snapshot.mjs && node scripts/cqts-materials.mjs && node scripts/snapshot.mjs",
     "build": "vite build && node scripts/seo.mjs",
     "build:pages": "npm run snapshot && npm run build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "og": "node scripts/og-articles.mjs"
   },
   "devDependencies": {
     "playwright-core": "^1.65.1",

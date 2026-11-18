@@ -1,11 +1,11 @@
 // Library: every nLab page, filterable by kind (concepts, theorems, people, references),
 // field and subject, sortable by how often pages are linked to, with lazy previews.
 // Data: snapshot/library.json, built from the nLab content mirror by scripts/mirror-index.mjs.
-import { icons } from './main.js';
+import { icons } from '../../ui/app.js';
 import './library.css';
 import 'katex/dist/katex.min.css';
-import { esc, pageUrl, displayTitle } from './nlab.js';
-import { fillPreview } from './preview.js';
+import { esc, pageUrl, displayTitle } from '../../core/nlab.js';
+import { fillPreview } from '../../ui/preview.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];

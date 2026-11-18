@@ -7,7 +7,7 @@
 import { readdir, readFile, writeFile, mkdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { hashSource, TIKZ_RE } from '../src/hash.js';
+import { hashSource, TIKZ_RE } from '../src/core/hash.js';
 
 const dir = process.argv[2] || join(tmpdir(), 'nlab-content');
 const OUT = new URL('../public/snapshot/tikz/', import.meta.url);

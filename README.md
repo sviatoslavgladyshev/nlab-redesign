@@ -16,14 +16,14 @@ npm run build:pages  # refresh the page index + forum snapshot, then build into 
 - **Every nLab page** (≈ 20 800) renders in this UI: sources are loaded from the nLab's public content mirror
   ([ncatlab/nlab-content](https://github.com/ncatlab/nlab-content)), which serves files with CORS headers, and are
   rendered in the browser (Markdown + itex/LaTeX via KaTeX, wiki links, theorem environments, includes, context menus).
-- **Search** over all page names and redirects, with instant suggestions in every search box; A–Z index of all pages.
+- **Search** (`/search?q=…`) — full-text over titles, alternative names and summaries, with kinds, fields, sorting and a library-catalogue query language (`"phrase"`, `OR`, `NOT`/`-word`, `( )`, `homot*`, `title:`, `summary:`, `kind:`); instant suggestions in every search box; A–Z index of all pages.
 - **Editing and writing** — full-screen workspace with two ways to write:
   - *Visual*: type into the page as normal text; `$x$` becomes a formula, `[[page]]` a link, `## ` a section;
     theorems, equations and tables are cards edited as LaTeX in place.
   - *LaTeX*: CodeMirror with highlighting, line numbers and autocomplete for `\commands` (with symbol previews),
     `[[page links]]` and `\begin{environments}`, beside a paginated **PDF preview** (A4, Computer Modern) with *Download PDF*.
   - Drafts save automatically in the browser; *Changes* shows a diff; *Publish* walks through sending the page to ncatlab.org.
-  - *Write an article* starts a new page from a template (concept, theorem, person, blank).
+  - *Write* (`/write`) starts a new page from a template (concept, theorem, person, blank); scratch pages are in the Library's *Sandbox* section.
 - **Forum** — a custom front end for the nForum (Zulip): channels, topics, threads with LaTeX. Signing in (with an nForum
   account, directly against nforum.ncatlab.org's API) enables live reading, replies and new topics.
 - **Recent changes** from the forum's edit announcements, with authors and summaries.
@@ -31,7 +31,7 @@ npm run build:pages  # refresh the page index + forum snapshot, then build into 
 
 - **Library** (`/library`) — every page filterable by kind (concepts, theorems, people, references), field and subject, sorted by how often pages are linked; authors placed in fields by the pages that cite them.
 - **CQTS** (`/cqts/…`) — home page with the center's logo and an animated braid, and one page per section (research, people, Symposium 2026, materials, activities, colloquium, events, get involved, archive). **Materials** collects 200+ talks with slides, videos and papers from the center's nLab record.
-- **Reading** — light/dark mode (remembers your choice, follows the system), and *Focus reading* on articles (Lexend, wider spacing, bold word beginnings).
+- **Reading** — light/dark mode (remembers your choice, follows the system), and *ADHD reading* on articles (Lexend, wider spacing, bold word beginnings), with a short introduction on first use.
 - **Diagrams** — the nLab's TikZ diagrams are pre-rendered at build time (`scripts/tikz-snapshot.mjs`).
 
 ## URLs and SEO
@@ -53,3 +53,36 @@ served by the app from `404.html`. Old `page.html?p=…` links redirect.
 
 Images are from Wikimedia Commons (public domain, CC0 or CC BY); full credits are in the site footer and
 `src/data/credits.json`.
+
+## Code layout
+
+```
+index.html, wiki/, library/, forum/, cqts/   HTML entry points (one per section)
+src/
+  core/          data and logic, no UI
+    nlab.js            the content mirror: page index, sources, names, URLs
+    markup.js          nLab source → HTML (Markdown, itex/KaTeX, includes, theorems, TikZ)
+    search-engine.js   search index, query language and ranking
+    forum-data.js      forum snapshot and live nForum (Zulip) API
+    drafts.js, hash.js
+  ui/            shared interface
+    app.js             site shell: icons, nav, dark mode, mobile menu, sign-up (every page imports it)
+    account.js, suggest.js (search suggestions), preview.js (page-preview cards), codemirror.js
+  styles/        base.css (layout, typography), theme.css (colours, dark mode, ADHD reading, mobile, scroll animations)
+  pages/         one folder per section: its entry script and its own CSS
+    home/              index.js, home.css, knowledge-graph.js (the 3D hero)
+    wiki/              index.js (router) → article.js, render.js, reading.js, search.js, recent.js,
+                       all-pages.js, write.js, templates.js, shell.js (shared helpers), article.css
+    editor/            editor.js (workspace), visual.js (visual mode), editor.css — loaded only when editing
+    library/, forum/, cqts/
+  data/          credits.json (image credits)
+scripts/         build-time generators (run by npm scripts)
+  mirror-index.mjs     page index, library, knowledge graph and search index from the content mirror
+  tikz-snapshot.mjs    pre-renders TikZ diagrams
+  cqts-materials.mjs   CQTS talks, slides and videos
+  snapshot.mjs         forum snapshot
+  seo.mjs              static article/CQTS pages, sitemap, 404 page (after vite build)
+  article-meta.mjs     per-article title/summary/image (shared by seo.mjs, og-articles.mjs and the dev server)
+  og-articles.mjs      link-preview images for the most-linked articles (needs Chrome; `npm run og`)
+public/          static files: images, brand, og/ previews, snapshot/ (generated, not committed)
+```
