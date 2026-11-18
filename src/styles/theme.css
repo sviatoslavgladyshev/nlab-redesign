@@ -473,3 +473,12 @@ html[data-mode="dark"] .nav-links a[aria-current] .nav-cqts { background-color: 
     .a-body :is(.theorem, .proposition, .definition, .lemma, .num_theorem, .num_prop, .num_defn, .num_lemma) { animation: sa-left linear both; animation-timeline: view(); animation-range: entry 0% entry 60%; }
   }
 }
+/* account dialog: confirmation step */
+.acct-tabs[hidden] { display: none; }
+.acct-done { align-items: center; text-align: center; padding-top: 34px !important; }
+.acct-done-ic { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 20px; background: var(--tonal); color: var(--primary); }
+.acct-done-ic svg { width: 30px; height: 30px; }
+.acct-done h2 { margin: 6px 0 0; }
+.acct-done p { margin: 0; color: var(--ink-2); line-height: 1.55; max-width: 34ch; overflow-wrap: anywhere; }
+.acct-done .modal-actions { justify-content: center; width: 100%; }
+.acct-done .modal-actions .tbtn { min-width: 140px; justify-content: center; }

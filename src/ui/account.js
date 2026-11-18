@@ -7,6 +7,7 @@ import { auth as forumAuth, signIn as forumSignIn, signOut as forumSignOut } fro
 import { dbEnabled, currentUser, displayName, initAuth, signUp, signIn, signOut, resetPassword } from '../core/db.js';
 import { drafts } from '../core/drafts.js';
 import { esc, FORUM } from '../core/nlab.js';
+import { icons } from './app.js';
 
 const initials = (n) => n.split(/\s+/).map((w) => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
 const hue = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
@@ -20,6 +21,8 @@ function makeDialog(html, onReady) {
   const tab = (t) => {
     d.querySelectorAll('[data-tab]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === t)));
     d.querySelectorAll('[data-pane]').forEach((p) => { p.hidden = p.dataset.pane !== t; });
+    const tabs = d.querySelector('.acct-tabs');
+    if (tabs) tabs.hidden = !['in', 'up'].includes(t); // only the sign-in / create-account panes have tabs
     d.querySelector(`[data-pane="${t}"] input`)?.focus();
   };
   d.addEventListener('click', (e) => {
@@ -74,12 +77,13 @@ const siteDialog = () => (siteDlg ??= makeDialog(`
     <p class="si-err" role="alert"></p>
     <div class="modal-actions"><button class="tbtn" type="button" data-tab="in">Back</button><button class="tbtn primary" type="submit">Send link</button></div>
   </form>
-  <div class="acct-pane" data-pane="sent" hidden>
+  <form class="acct-pane acct-done" data-pane="sent" method="dialog" hidden>
+    <span class="acct-done-ic"><i data-lucide="mail-check"></i></span>
     <h2>Check your email</h2>
     <p class="acct-sent"></p>
-    <div class="modal-actions"><button class="tbtn primary" type="button" data-close>OK</button></div>
-  </div>`, (d) => {
-  const sent = (msg) => { d.querySelector('.acct-sent').textContent = msg; d.tab('sent'); };
+    <div class="modal-actions"><button class="tbtn primary" type="submit">Got it</button></div>
+  </form>`, (d) => {
+  const sent = (msg) => { d.querySelector('.acct-sent').textContent = msg; d.tab('sent'); icons(); };
   submitting(d.querySelector('[data-pane="in"]'), async (f) => {
     try { await signIn(f.email.value.trim(), f.password.value); } catch (ex) {
       ex.friendly = /confirm/i.test(ex.message) ? 'Please confirm your email address first (check your inbox).' : /invalid|credential/i.test(ex.message) ? 'Email or password is not correct.' : `Could not sign in (${ex.message}).`;
