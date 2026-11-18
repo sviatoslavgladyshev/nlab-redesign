@@ -65,27 +65,52 @@ async function run(pages, total, save) {
   }
 }
 
-if (OUT_DIR) {
-  // no database: from the snapshot and the mirror, into JSON files
-  const mirror = args.find((a, i) => !a.startsWith("--") && (outIdx < 0 || i !== outIdx + 1) && args[i - 1] !== "--limit") || join(tmpdir(), 'nlab-content');
+// Upload, splitting the batch in half when the database is slow (statement timeout) and retrying
+async function upload(rows, attempt = 1) {
+  try { await rpc('import_embeddings', { rows }); } catch (e) {
+    if (rows.length > 6) { const h = rows.length >> 1; await upload(rows.slice(0, h)); await upload(rows.slice(h)); return; }
+    if (attempt >= 4) throw e;
+    await new Promise((r) => setTimeout(r, 1500 * attempt));
+    await upload(rows, attempt + 1);
+  }
+}
+
+// page texts from the snapshot and the local nLab mirror (no heavy reads from the database)
+function localPages() {
+  const mirror = args.find((a, i) => !a.startsWith('--') && (outIdx < 0 || i !== outIdx + 1) && args[i - 1] !== '--limit') || join(tmpdir(), 'nlab-content');
+  if (!existsSync(join(mirror, 'pages'))) { console.error(`No nLab mirror at ${mirror} (run npm run snapshot, or pass its path).`); process.exit(1); }
   const snap = (f) => JSON.parse(readFileSync(new URL(`public/snapshot/${f}`, ROOT), 'utf8'));
   const summary = new Map(snap('search.json').map((r) => [r[0], r[3]]));
-  const pages = snap('nlab-index.json').pages.map(([dir, name]) => {
+  return snap('nlab-index.json').pages.map(([dir, name]) => {
     const f = join(mirror, 'pages', dir, 'content.md');
     return { name, summary: summary.get(name) || '', source: existsSync(f) ? readFileSync(f, 'utf8').slice(0, 4000) : '' };
-  }).slice(0, LIMIT);
+  });
+}
+// names of pages that already have an embedding (1000 per request, the API's page size)
+async function embeddedNames() {
+  const done = new Set();
+  for (let from = 0; ; from += 1000) {
+    const res = await fetch(`${URL_}/rest/v1/pages?select=name&embedding=not.is.null&order=id&offset=${from}&limit=1000`, {
+      headers: { apikey: SECRET, Authorization: `Bearer ${SECRET}` },
+    });
+    if (!res.ok) throw new Error(`reading progress: HTTP ${res.status} ${(await res.text()).slice(0, 200)}`);
+    const rows = await res.json();
+    rows.forEach((r) => done.add(r.name.toLowerCase()));
+    if (rows.length < 1000) return done;
+  }
+}
+
+if (OUT_DIR) {
+  const pages = localPages().slice(0, LIMIT);
   console.log(`Embedding ${pages.length} pages with gte-small…`);
   mkdirSync(OUT_DIR, { recursive: true });
   await run(pages, pages.length, async (rows) => writeFileSync(join(OUT_DIR, `emb-${String(file++).padStart(4, '0')}.json`), JSON.stringify(rows)));
 } else {
-  // the database: pages without a current embedding, 1000 at a time (the API's page size), until none are left
   if (!URL_ || !SECRET) { console.error('Missing VITE_SUPABASE_URL (in .env) or SUPABASE_SECRET_KEY (in .env.local).'); process.exit(1); }
-  console.log('Embedding pages with gte-small…');
-  for (;;) {
-    const pages = (await rpc('pages_to_embed', { p_limit: 1000 })).slice(0, LIMIT - done);
-    if (!pages.length) break;
-    await run(pages, 0, (rows) => rpc('import_embeddings', { rows }));
-    if (done >= LIMIT) break;
-  }
+  const done = await embeddedNames();
+  // pages from the mirror still without an embedding (pages created or edited on the site are picked up by pages_to_embed later)
+  const pages = localPages().filter((p) => !done.has(p.name.toLowerCase())).slice(0, LIMIT);
+  console.log(`${done.size} pages already have an embedding; embedding ${pages.length} more with gte-small…`);
+  await run(pages, pages.length, (rows) => upload(rows));
 }
 console.log(`\nDone: ${done} pages.`);
