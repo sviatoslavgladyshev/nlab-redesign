@@ -1,6 +1,6 @@
 import { busy, icons } from '../../ui/app.js';
 import { currentUser, dbEnabled, displayName, initAuth } from '../../core/db.js';
-import { cachedProfile, loadProfile, saveProfile } from '../../core/profile.js';
+import { cachedProfile, deleteAccount, loadProfile, saveProfile } from '../../core/profile.js';
 import { esc } from '../../core/nlab.js';
 import { $, link, setHero } from './shell.js';
 import './profile.css';
@@ -9,7 +9,7 @@ export async function showProfile(settings) {
   const body = $('#a-body');
   const title = settings ? 'Profile settings' : 'My profile';
   body.classList.add('loaded', 'is-search');
-  setHero({ title, meta: settings ? 'Manage your identity and reading preferences.' : 'Your nLab account and contributions.' });
+  setHero({ title });
   body.innerHTML = '<p role="status">Loading your account…</p>';
   await initAuth();
   let generation = 0;
@@ -36,7 +36,7 @@ export async function showProfile(settings) {
       const notice = document.createElement('p');
       notice.textContent = 'Profile storage is unavailable. Try again later.';
       notice.setAttribute('role', 'status');
-      if (settings) body.replaceChildren(notice);
+      if (settings) showSettings(body, user, null, notice);
       else body.prepend(notice);
     }
   }
@@ -85,33 +85,48 @@ function activityLink(title, description, icon, href) {
   </a>`;
 }
 
-function showSettings(body, user, profile) {
-  body.innerHTML = `<div class="profile-layout">
+function showSettings(body, user, profile, notice) {
+  body.innerHTML = `<div class="profile-layout profile-settings">
     ${profileNav(true)}
-    <form class="profile-form">
-      <fieldset class="profile-card">
-        <legend>Profile details</legend>
+    <form class="profile-form"${notice ? ' hidden' : ''}>
+      <section class="profile-panel" aria-labelledby="profile-details">
+        <h2 id="profile-details">Profile details</h2>
         <label>Display name<input name="display_name" required maxlength="80" autocomplete="name"></label>
-        <small>Used for future contributions and suggestions.</small>
-        <label>Affiliation <span>Optional</span><input name="affiliation" maxlength="120" autocomplete="organization"></label>
-        <label>About you <span>Optional</span><textarea name="bio" rows="3" maxlength="500"></textarea></label>
-      </fieldset>
-      <fieldset class="profile-card">
-        <legend>Appearance and reading</legend>
+        <label><span>Affiliation <small>Optional</small></span><input name="affiliation" maxlength="120" autocomplete="organization"></label>
+        <label class="profile-wide"><span>Bio <small>Optional</small></span><textarea name="bio" rows="3" maxlength="500"></textarea></label>
+      </section>
+      <section class="profile-panel" aria-labelledby="profile-preferences">
+        <h2 id="profile-preferences">Appearance and reading</h2>
         <label>Theme<select name="theme"><option value="system">System setting</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
-        <label class="profile-check"><input type="checkbox" name="focus_read"> Enable ADHD reading by default</label>
-      </fieldset>
+        <label class="profile-check"><input type="checkbox" name="focus_read"> ADHD reading by default</label>
+      </section>
       <div class="profile-save">
         <button class="tbtn primary" type="submit"><i data-lucide="check"></i><span>Save settings</span></button>
         <p role="status"></p>
       </div>
     </form>
-    <section class="profile-card profile-account">
+    <section class="profile-panel profile-account">
       <div><h2>Account</h2><p>Signed in as ${esc(user.email || displayName(user))}</p></div>
       <button class="tbtn" type="button" data-acct="out">Sign out</button>
+      <button class="tbtn profile-delete" type="button"><i data-lucide="trash-2"></i>Delete account</button>
     </section>
+    <dialog class="profile-confirm" aria-labelledby="profile-confirm-title" aria-describedby="profile-confirm-description">
+      <form>
+        <h2 id="profile-confirm-title">Delete your account?</h2>
+        <p id="profile-confirm-description">This permanently deletes your account, profile, and synced drafts. Published contributions and browser-only draft copies remain.</p>
+        <label>Type <strong>DELETE</strong> to confirm
+          <input name="confirmation" autocomplete="off" spellcheck="false" required>
+        </label>
+        <p role="alert" class="profile-delete-error" hidden></p>
+        <div class="profile-confirm-actions">
+          <button class="tbtn" type="button" autofocus>Cancel</button>
+          <button class="tbtn profile-delete" type="submit" disabled>Delete account</button>
+        </div>
+      </form>
+    </dialog>
   </div>`;
   const form = $('.profile-form', body);
+  if (notice) form.before(notice);
   const fields = form.elements;
   fields.display_name.value = profile?.display_name || displayName(user);
   fields.affiliation.value = profile?.affiliation || '';
@@ -143,5 +158,47 @@ function showSettings(body, user, profile) {
       stop();
     }
   });
+  wireAccountDeletion(body, user);
   icons();
+}
+
+function wireAccountDeletion(body, user) {
+  const dialog = $('.profile-confirm', body);
+  const form = $('form', dialog);
+  const field = form.elements.confirmation;
+  const errorMessage = $('[role="alert"]', form);
+  const cancel = $('[type="button"]', form);
+  const submit = $('[type="submit"]', form);
+  let deleting = false;
+  $('.profile-account .profile-delete', body).addEventListener('click', () => {
+    form.reset();
+    errorMessage.hidden = true;
+    submit.disabled = true;
+    dialog.showModal();
+  });
+  field.addEventListener('input', () => { submit.disabled = field.value !== 'DELETE'; });
+  cancel.addEventListener('click', () => dialog.close());
+  dialog.addEventListener('cancel', (event) => {
+    if (deleting) event.preventDefault();
+  });
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (deleting || field.value !== 'DELETE') return;
+    deleting = true;
+    field.readOnly = true;
+    cancel.disabled = true;
+    errorMessage.hidden = true;
+    const stop = busy(submit);
+    try {
+      await deleteAccount(user, field.value);
+      location.replace(new URL('./', document.baseURI));
+    } catch {
+      errorMessage.textContent = 'Could not delete your account. Try again in a moment.';
+      errorMessage.hidden = false;
+      deleting = false;
+      field.readOnly = false;
+      cancel.disabled = false;
+      stop();
+    }
+  });
 }

@@ -47,6 +47,22 @@ export async function saveProfile(user, details) {
   return data;
 }
 
+export async function deleteAccount(user, confirmation) {
+  const client = await db();
+  if (currentUser()?.id !== user.id) throw new Error('Sign in again to delete your account.');
+  const { error } = await client.rpc('delete_my_account', {
+    p_expected_user: user.id,
+    p_confirmation: confirmation,
+  });
+  if (error) throw error;
+  try { sessionStorage.removeItem(cacheKey(user.id)); }
+  catch { /* Storage may be unavailable. */ }
+  if (currentUser()?.id === user.id) {
+    // The account is already gone even if the logout request fails.
+    await client.auth.signOut({ scope: 'local' }).catch(() => {});
+  }
+}
+
 export function applyProfilePreferences(profile, userId, force = false) {
   if (!profile) return;
   const signature = JSON.stringify([userId, profile.theme, profile.focus_read]);

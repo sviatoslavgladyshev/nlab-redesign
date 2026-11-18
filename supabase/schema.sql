@@ -36,6 +36,24 @@ create policy "own drafts: add"    on public.drafts for insert to authenticated 
 create policy "own drafts: change" on public.drafts for update to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
 create policy "own drafts: delete" on public.drafts for delete to authenticated using (user_id = (select auth.uid()));
 
+-- Self-service deletion. The expected ID prevents deleting a newly switched account.
+create or replace function public.delete_my_account(p_expected_user uuid, p_confirmation text)
+returns void language plpgsql security definer set search_path = '' as $$
+declare
+  account_id uuid := auth.uid();
+begin
+  if account_id is null or account_id is distinct from p_expected_user then
+    raise exception 'Sign in again to delete your account.' using errcode = '42501';
+  end if;
+  if p_confirmation is distinct from 'DELETE' then
+    raise exception 'Type DELETE to confirm.' using errcode = '22023';
+  end if;
+  delete from auth.users where id = account_id;
+end;
+$$;
+revoke all on function public.delete_my_account(uuid, text) from public, anon;
+grant execute on function public.delete_my_account(uuid, text) to authenticated;
+
 -- Updates list: anyone may add their email; nobody can read the list through the site
 -- (you see it in the dashboard: Table Editor → subscribers, and can export it as CSV).
 create table if not exists public.subscribers (
