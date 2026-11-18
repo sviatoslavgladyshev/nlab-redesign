@@ -192,7 +192,8 @@ a:hover .h-more svg { transform: translateX(4px); }
 .h-cqts h3 em { font-style: italic; color: #c9b6ec; }
 .h-cqts p { margin: 14px 0 20px; font: 16.5px/1.55 var(--ui); color: rgba(255, 255, 255, .82); max-width: 560px; }
 .h-cqts .h-more { color: #fff; }
-.h-cqts-art svg { width: 100%; filter: drop-shadow(0 0 22px rgba(201, 182, 236, .5)); }
+.h-cqts-art { display: grid; place-items: center; }
+.h-cqts-art svg { width: 100%; max-width: 280px; aspect-ratio: 1; overflow: visible; filter: drop-shadow(0 0 22px rgba(201, 182, 236, .5)); }
 @media (max-width: 760px) { .h-cqts { grid-template-columns: 1fr; padding: 30px 24px; } .h-cqts-art { display: none; } .h-section { padding: 70px 0; } }
 /* let the knowledge graph show: a smaller, softer glow behind the hero text */
 .hero-v3 .hero-center::before { inset: -24px -40px; background: radial-gradient(closest-side, color-mix(in srgb, var(--paper) 88%, transparent) 40%, transparent); }
