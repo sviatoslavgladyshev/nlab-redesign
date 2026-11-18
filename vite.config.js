@@ -33,6 +33,7 @@ export default defineConfig({
         page: resolve(import.meta.dirname, 'page.html'),
         cqts: resolve(import.meta.dirname, 'cqts.html'),
         forum: resolve(import.meta.dirname, 'forum.html'),
+        library: resolve(import.meta.dirname, 'library.html'),
       },
     },
   },

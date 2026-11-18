@@ -240,5 +240,15 @@ $$('form.signup').forEach((f) => {
   });
 });
 
+/* Top bar: mark the current section */
+{
+  const here = location.pathname.split('/').pop() || 'index.html';
+  const recent = new URLSearchParams(location.search).has('recent');
+  $$('.nav-links a').forEach((a) => {
+    const href = a.getAttribute('href');
+    if ((href === 'page.html?recent' && recent) || (href !== 'page.html?recent' && href === here)) a.setAttribute('aria-current', 'page');
+  });
+}
+
 /* Styles are in place: show the page (see the inline style in each page's <head>) */
 document.documentElement.classList.add('ready');

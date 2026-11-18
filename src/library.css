@@ -1,0 +1,92 @@
+/* ===================== Library ===================== */
+.lib-head { padding: 36px 0 0; border-bottom: 1px solid var(--rule); background: #fff; }
+.lib-head .crumbs { font: 500 13px var(--ui); color: var(--muted); display: flex; gap: 8px; }
+.lib-head-row { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; flex-wrap: wrap; }
+.lib-head .title { font-family: var(--display); font-weight: 600; font-size: clamp(34px, 4.4vw, 52px); line-height: 1.05; margin: 10px 0 8px; }
+.lib-sub { font: 16px/1.5 var(--ui); color: var(--ink-2); max-width: 560px; }
+.lib-search { display: flex; align-items: center; gap: 10px; height: 46px; width: min(380px, 100%); padding: 0 16px; border-radius: 999px; background: #fff; border: 1px solid var(--outline); color: var(--muted); transition: border-color .2s, box-shadow .2s; }
+.lib-search:focus-within { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(29, 79, 145, .12); }
+.lib-search input { all: unset; flex: 1; font: 15.5px var(--ui); color: var(--ink); }
+.lib-search svg { width: 18px; height: 18px; }
+
+.lib-kinds { display: flex; gap: 4px; margin-top: 26px; overflow-x: auto; scrollbar-width: none; }
+.lib-kinds button { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; padding: 12px 16px 14px; font: 600 14.5px var(--ui); color: var(--muted); border-bottom: 3px solid transparent; white-space: nowrap; transition: color .15s, border-color .2s; }
+.lib-kinds button svg { width: 17px; height: 17px; }
+.lib-kinds button em { font-style: normal; font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 999px; background: var(--paper-2); color: var(--muted); font-variant-numeric: tabular-nums; }
+.lib-kinds button:hover { color: var(--ink); }
+.lib-kinds button[aria-selected="true"] { color: var(--primary); border-bottom-color: var(--primary); }
+.lib-kinds button[aria-selected="true"] em { background: var(--tonal); color: var(--on-tonal); }
+.lib-kinds button:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; border-radius: 8px; }
+
+.lib-layout { display: grid; grid-template-columns: 270px minmax(0, 1fr); gap: 40px; padding-top: 28px; padding-bottom: 100px; align-items: start; }
+.lib-side { position: sticky; top: 80px; max-height: calc(100vh - 100px); overflow: auto; scrollbar-width: thin; font-family: var(--ui); padding-right: 4px; }
+.lib-label { font-size: 11.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); margin: 0 0 8px 12px; }
+#lib-fields > button { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 12px; border-radius: 999px; font-size: 14px; font-weight: 500; color: var(--ink-2); }
+#lib-fields > button svg { width: 17px; height: 17px; color: var(--muted); flex: none; }
+#lib-fields > button span { flex: 1; min-width: 0; }
+#lib-fields em { font-style: normal; font-size: 12px; color: var(--faint); font-variant-numeric: tabular-nums; }
+#lib-fields > button:hover { background: var(--paper-2); color: var(--ink); }
+#lib-fields > button.on { background: var(--tonal); color: var(--on-tonal); font-weight: 600; }
+#lib-fields > button.on svg, #lib-fields > button.on em { color: var(--on-tonal); }
+.lib-subs { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 4px 12px 14px; }
+.lib-subs button { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--rule); font-size: 12.5px; color: var(--ink-2); background: #fff; }
+.lib-subs button em { font-size: 11px; }
+.lib-subs button:hover { border-color: var(--outline); }
+.lib-subs button[aria-pressed="true"] { background: var(--primary); border-color: var(--primary); color: #fff; }
+.lib-subs button[aria-pressed="true"] em { color: rgba(255, 255, 255, .8); }
+
+.lib-main { min-width: 0; font-family: var(--ui); }
+.lib-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; min-height: 40px; }
+#lib-count { font-size: 14.5px; color: var(--muted); }
+#lib-count b { color: var(--ink); font-size: 16px; }
+.lib-chips { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; }
+.chip { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; padding: 5px 8px 5px 12px; border-radius: 999px; background: var(--tonal); color: var(--on-tonal); font-size: 13px; font-weight: 600; }
+.chip svg { width: 14px; height: 14px; }
+.chip:hover { background: #c9d8f0; }
+.chip.clear-all { background: transparent; color: var(--primary); padding-right: 12px; }
+.lib-sort { display: flex; padding: 3px; gap: 2px; border-radius: 999px; background: var(--paper-2); }
+.lib-sort button { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.lib-sort button svg { width: 15px; height: 15px; }
+.lib-sort button[aria-pressed="true"] { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(20, 28, 40, .12); }
+.lib-az { display: flex; flex-wrap: wrap; gap: 3px; margin-bottom: 16px; }
+.lib-az[hidden] { display: none; }
+.lib-az button { all: unset; cursor: pointer; width: 32px; height: 32px; display: grid; place-items: center; border-radius: 8px; font-size: 13.5px; font-weight: 600; color: var(--ink-2); }
+.lib-az button:hover { background: var(--paper-2); }
+.lib-az button[aria-pressed="true"] { background: var(--primary); color: #fff; }
+
+.lib-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+.lib-card {
+  display: flex; flex-direction: column; gap: 8px; padding: 18px 18px 16px; border-radius: 18px; background: #fff; border: 1px solid var(--rule);
+  color: var(--ink); transition: border-color .2s, box-shadow .2s, transform .2s;
+}
+.lib-card:hover { border-color: transparent; box-shadow: 0 2px 6px rgba(20, 28, 40, .06), 0 12px 30px rgba(20, 28, 40, .1); transform: translateY(-2px); }
+.lib-card > b, .lc-body > b { font-family: var(--text); font-size: 18px; font-weight: 600; line-height: 1.25; color: var(--ink); }
+.lib-card:hover > b, .lib-card:hover .lc-body > b { color: var(--primary); }
+.lc-tag { align-self: flex-start; padding: 2px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 600; background: var(--paper-2); color: var(--ink-2); }
+.lc-tag.k-t { background: #f7dde0; color: #3d0710; }
+.lc-tag.k-r { background: #f6e7c4; color: #4a3300; }
+.lc-tag.k-d { background: #eceef1; color: var(--muted); }
+.lc-ex { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; font-family: var(--text); font-size: 14px; line-height: 1.45; color: var(--muted); min-height: 1.45em; }
+.lc-ex.in { animation: page-in .3s ease both; }
+.lc-ex .katex { font-size: 1em; }
+.lc-ex .eq { display: none; }
+.lc-meta { display: inline-flex; align-items: center; gap: 6px; margin-top: auto; padding-top: 4px; font-size: 12.5px; color: var(--faint); }
+.lc-meta svg { width: 14px; height: 14px; }
+.lib-card.person { flex-direction: row; align-items: flex-start; gap: 14px; }
+.lib-card.person .av { --s: 48px; width: var(--s); height: var(--s); flex: none; border-radius: 50%; display: grid; place-items: center; background: hsl(var(--h) 45% 88%); color: hsl(var(--h) 45% 26%); font: 700 16px var(--ui); }
+.lc-body { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.lib-card.person .lc-meta { margin-top: 0; padding-top: 0; }
+.lib-loading, .lib-empty { grid-column: 1 / -1; padding: 40px 0; color: var(--muted); }
+.lib-empty .tbtn { margin-top: 12px; }
+.lib-more { display: flex; justify-content: center; margin-top: 24px; }
+.ll-skel { display: block; height: 10px; margin: 5px 0; border-radius: 5px; width: 100%; background: linear-gradient(90deg, #eef0f3 0%, #f6f7f9 50%, #eef0f3 100%); background-size: 200% 100%; animation: shimmer 1.4s infinite; }
+.ll-skel.short { width: 60%; }
+@keyframes shimmer { to { background-position: -200% 0; } }
+@media (max-width: 900px) {
+  .lib-layout { grid-template-columns: 1fr; gap: 16px; }
+  .lib-side { position: static; max-height: none; }
+  #lib-fields { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+  #lib-fields > button { width: auto; flex: none; border: 1px solid var(--rule); }
+  .lib-subs { display: none; }
+}
+.lc-fields { display: flex; flex-wrap: wrap; gap: 4px; margin: 2px 0; }
