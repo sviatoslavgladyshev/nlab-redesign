@@ -16,7 +16,8 @@ import { articleMeta } from './article-meta.mjs';
 
 const mirror = process.argv[2] || join(tmpdir(), 'nlab-content');
 const LIMIT = +(process.argv[3] || 3000);
-const DIST = new URL('../dist/', import.meta.url);
+// the built site (DIST_DIR may point outside the project, e.g. when the project folder is synced by iCloud)
+const DIST = process.env.DIST_DIR ? new URL(`file://${process.env.DIST_DIR.replace(/\/?$/, '/')}`) : new URL('../dist/', import.meta.url);
 const read = (rel) => readFile(new URL(rel, DIST), 'utf8');
 const write = async (rel, text) => { const u = new URL(rel, DIST); await mkdir(new URL('.', u), { recursive: true }); await writeFile(u, text); };
 
