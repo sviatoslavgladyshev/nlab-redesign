@@ -47,6 +47,7 @@ const textOf = ({ name, summary, source }) => `${name}. ${summary || ''} ${plain
 
 const embed = await pipeline('feature-extraction', 'Supabase/gte-small', { dtype: 'fp32' });
 const BATCH = 32;
+const SAVE_EVERY = OUT_DIR ? 500 : 96; // small uploads: the database recomputes each updated row
 const started = Date.now();
 let done = 0, file = 0;
 
@@ -57,7 +58,7 @@ async function run(pages, total, save) {
     const chunk = pages.slice(i, i + BATCH);
     const list = (await embed(chunk.map(textOf), { pooling: 'mean', normalize: true })).tolist();
     chunk.forEach((p, k) => out.push({ name: p.name, embedding: `[${list[k].map((x) => +x.toFixed(5)).join(',')}]` }));
-    if (out.length >= 500 || i + BATCH >= pages.length) { await save(out.splice(0)); }
+    if (out.length >= SAVE_EVERY || i + BATCH >= pages.length) { await save(out.splice(0)); }
     done += chunk.length;
     const rate = done / ((Date.now() - started) / 1000);
     process.stdout.write(`\r  ${done}${total ? `/${total}` : ''} · ${rate.toFixed(0)} pages/s${total ? ` · ${Math.round((total - done) / rate)} s left` : ''}   `);
@@ -66,7 +67,7 @@ async function run(pages, total, save) {
 
 if (OUT_DIR) {
   // no database: from the snapshot and the mirror, into JSON files
-  const mirror = args.find((a, i) => !a.startsWith('--') && i !== outIdx + 1 && args[i - 1] !== '--limit') || join(tmpdir(), 'nlab-content');
+  const mirror = args.find((a, i) => !a.startsWith("--") && (outIdx < 0 || i !== outIdx + 1) && args[i - 1] !== "--limit") || join(tmpdir(), 'nlab-content');
   const snap = (f) => JSON.parse(readFileSync(new URL(`public/snapshot/${f}`, ROOT), 'utf8'));
   const summary = new Map(snap('search.json').map((r) => [r[0], r[3]]));
   const pages = snap('nlab-index.json').pages.map(([dir, name]) => {

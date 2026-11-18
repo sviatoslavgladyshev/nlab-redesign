@@ -16,7 +16,7 @@ const ROOT = new URL('../', import.meta.url);
 const args = process.argv.slice(2);
 const outIdx = args.indexOf('--out');
 const OUT_DIR = outIdx >= 0 ? args[outIdx + 1] : null;
-const mirror = args.find((a, i) => !a.startsWith('--') && i !== outIdx + 1) || join(tmpdir(), 'nlab-content');
+const mirror = args.find((a, i) => !a.startsWith("--") && (outIdx < 0 || i !== outIdx + 1)) || join(tmpdir(), 'nlab-content');
 
 // settings from .env / .env.local (without printing them)
 const env = { ...process.env };
