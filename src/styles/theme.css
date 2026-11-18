@@ -445,7 +445,7 @@ html[data-mode="dark"] .nav-links a[aria-current] .nav-cqts { background-color: 
     @keyframes sa-left { from { opacity: 0; transform: translateX(-60px); } }
     @keyframes sa-right { from { opacity: 0; transform: translateX(60px); } }
     @keyframes sa-zoom { from { opacity: 0; transform: scale(.86); filter: blur(6px); } }
-    @keyframes sa-spin { from { transform: rotate(-14deg) scale(.85); } to { transform: rotate(10deg) scale(1.05); } }
+    @keyframes sa-float { from { transform: translateY(30px) scale(.94); } to { transform: translateY(-30px) scale(1.04); } }
     @keyframes sa-drift { from { transform: translateY(40px); } to { transform: translateY(-40px); } }
     @keyframes sa-line { from { transform: scaleX(0); } }
 
@@ -462,7 +462,7 @@ html[data-mode="dark"] .nav-links a[aria-current] .nav-cqts { background-color: 
     .h-live { animation-name: sa-right; }
     .h-feature img { animation: sa-zoom linear both; animation-timeline: view(); animation-range: entry 0% cover 40%; }
     .h-try { animation-name: sa-zoom; }
-    .h-cqts-art svg { animation: sa-spin linear both; animation-timeline: view(); animation-range: cover 0% cover 100%; }
+    .h-cqts-art svg { animation: sa-float linear both; animation-timeline: view(); animation-range: cover 0% cover 100%; }
     .h-head h2::after { content: ""; display: block; width: 64px; height: 4px; margin-top: 14px; border-radius: 2px; background: var(--primary); transform-origin: left; animation: sa-line linear both; animation-timeline: view(); animation-range: entry 40% cover 35%; }
 
     /* library, forum, search, articles, CQTS */
