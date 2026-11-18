@@ -38,21 +38,23 @@ const ENV_MENU = [['defn|Definition', 'Definition', 'Introduce a notion', 'book-
 
 let ws; // the single workspace instance
 
-export function openWorkspace({ name, original, start, isNew = false, onExit }) {
+export function openWorkspace({ name, original, start, isNew = false, suggestion = false, onExit }) {
   ws?.destroy();
-  ws = new Workspace({ name, original, start, isNew, onExit });
+  ws = new Workspace({ name, original, start, isNew, suggestion, onExit });
   return ws;
 }
 
 class Workspace {
-  constructor({ name, original, start, isNew, onExit }) {
-    Object.assign(this, { name, original, isNew, onExit });
+  constructor({ name, original, start, isNew, suggestion, onExit }) {
+    Object.assign(this, { name, original, isNew, suggestion, onExit });
     this.source = start;
     this.el = $('#ws');
     this.el.hidden = false;
     document.body.classList.add('ws-open');
+    this.el.classList.toggle('ws-suggestion', suggestion);
     $('#ws-name').textContent = name;
     $('#ws-new').hidden = !isNew;
+    $('[data-ws="publish"] span').textContent = suggestion ? 'Prepare suggestion' : 'Publish';
     this.mode = localStorage.getItem(MODE_KEY) === 'latex' ? 'latex' : 'visual';
     this.ac = new AbortController();
     const on = (target, ev, fn, opts = {}) => target.addEventListener(ev, fn, { ...opts, signal: this.ac.signal });
@@ -388,13 +390,21 @@ class Workspace {
     this.saveNow();
     const dlg = $('#pub-dlg');
     const { added, removed } = diffLines(this.original, this.source);
-    $('#pub-sum').textContent = this.isNew ? `New page · ${this.source.split('\n').length} lines` : `${added} line${added === 1 ? '' : 's'} added, ${removed} removed`;
+    $('#pub-title').textContent = this.suggestion ? 'Suggest an edit' : 'Publish to the nLab';
+    $('#pub-intro').textContent = this.suggestion
+      ? 'Share your proposed source with the page authors. Suggestions are reviewed before they become part of the article.'
+      : 'The nLab stores every page on ncatlab.org. Publishing takes three short steps:';
+    $('#pub-step-paste').textContent = this.suggestion ? 'Share the proposed source with the page author.' : 'Paste it into the nLab editor and press “Submit”.';
+    $('#pub-step-forum').textContent = this.suggestion ? 'Explain what you would change and why in the forum.' : 'For anything beyond a typo, say what you changed in the forum.';
+    $('#pub-open').hidden = this.suggestion;
+    $('#pub-sum').textContent = this.suggestion ? `${added} line${added === 1 ? '' : 's'} added, ${removed} removed · suggestion only` : (this.isNew ? `New page · ${this.source.split('\n').length} lines` : `${added} line${added === 1 ? '' : 's'} added, ${removed} removed`);
     $('#pub-open').href = `${ORIGIN}/nlab/${this.isNew ? 'new' : 'edit'}/${encodeName(this.name)}`;
-    $('#pub-forum').href = `forum.html?new=${encodeURIComponent(this.name)}`;
+    $('#pub-forum').href = `forum/?new=${encodeURIComponent(this.name)}`;
     $('#pub-copy').onclick = async () => {
       try { await navigator.clipboard.writeText(this.source); $('#pub-copy span').textContent = 'Copied'; } catch { $('#pub-copy span').textContent = 'Copy failed: select the source in LaTeX mode'; }
     };
-    $('#pub-done').onclick = () => { drafts.clear(this.name); dlg.close(); this.destroy(); this.onExit?.('published'); };
+    $('#pub-done span').textContent = this.suggestion ? 'I’ve sent the suggestion' : 'I’ve published it';
+    $('#pub-done').onclick = () => { drafts.clear(this.name); dlg.close(); this.destroy(); this.onExit?.(this.suggestion ? 'suggested' : 'published'); };
     $('#pub-copy span').textContent = 'Copy page source';
     dlg.showModal();
   }

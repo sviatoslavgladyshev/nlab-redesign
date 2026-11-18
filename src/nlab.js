@@ -13,7 +13,8 @@ const MIRROR = 'https://raw.githubusercontent.com/ncatlab/nlab-content/master/pa
 
 export const decodeName = (seg) => decodeURIComponent(seg.replace(/\+/g, ' '));
 export const encodeName = (name) => encodeURIComponent(name).replace(/%20/g, '+');
-export const pageUrl = (name) => (name === 'HomePage' ? './' : `page.html?p=${encodeName(name)}`);
+// Clean URLs: wiki/<Page+name>[?edit|?new…] (relative to the site root, see <base> in each page)
+export const pageUrl = (name, q = '') => (name === 'HomePage' ? './' : `wiki/${encodeName(name)}/${q ? `?${q}` : ''}`);
 export const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 export class PageNotFound extends Error {
@@ -22,20 +23,20 @@ export class PageNotFound extends Error {
 
 // Map any nLab / nForum URL to its in-site equivalent; everything else becomes absolute.
 export function rewriteHref(href) {
-  if (!href || href.startsWith('#') || /^(page|cqts|forum|index)\.html|^\.\//.test(href)) return href;
+  if (!href || href.startsWith('#') || /^(wiki\/|library\/|forum\/|cqts\/|recent|write|all|search\?|\.\/)/.test(href)) return href; // already in-site
   let u;
   try { u = new URL(href, `${ORIGIN}/nlab/show/`); } catch { return href; }
   if (u.protocol === 'javascript:') return '#';
   if (u.hostname === 'ncatlab.org') {
     const m = u.pathname.match(/^\/nlab\/(?:show|edit|source|history|revision)\/([^/]+)/);
     if (m) return pageUrl(decodeName(m[1])) + u.hash;
-    if (/^\/nlab\/(latest_revisions|recently_revised)/.test(u.pathname)) return 'page.html?recent';
-    if (/^\/nlab\/(all_pages|list)/.test(u.pathname)) return 'page.html?all';
+    if (/^\/nlab\/(latest_revisions|recently_revised)/.test(u.pathname)) return 'recent';
+    if (/^\/nlab\/(all_pages|list)/.test(u.pathname)) return 'all';
   }
   if (u.hostname === 'nforum.ncatlab.org') {
     const d = u.pathname.match(/^\/discussion\/(\d+)/);
-    if (d) return `forum.html?d=${d[1]}${u.hash}`;
-    if (u.pathname === '/' || u.pathname === '') return 'forum.html';
+    if (d) return `forum/?d=${d[1]}${u.hash}`;
+    if (u.pathname === '/' || u.pathname === '') return 'forum/';
   }
   return u.href;
 }
@@ -52,7 +53,8 @@ export function clean(root, base = ORIGIN) {
     if (/^https?:/.test(h)) { a.target = '_blank'; a.rel = 'noopener'; }
   });
   root.querySelectorAll('img[src]').forEach((img) => {
-    img.src = new URL(img.getAttribute('src'), base).href;
+    const src = img.getAttribute('src');
+    if (!/^(snapshot\/|img\/|brand\/|og\/)/.test(src)) img.src = new URL(src, base).href; // keep the site's own images
     img.loading = 'lazy';
   });
   return root;
@@ -165,3 +167,29 @@ export async function latestChanges(limit = 8) {
 // nForum: front page (list of discussions) and single discussions
 export const forumFront = () => fetchLiveOrSnapshot(`${FORUM_API}/`, 'forum/index.html');
 export const forumDiscussion = (id) => fetchLiveOrSnapshot(`${FORUM_API}/discussion/${id}/`, `forum/d${id}.html`);
+
+/* ---------- Display titles ----------
+   Page names are stored in lower case ("topological space"); for display, titles get title case
+   and people's names are capitalised — except name particles (ibn, al-, de, van, von…) and small
+   words in titles. Words that already contain capitals (nLab, SEAR, K-theory) are left alone. */
+const SMALL = new Set('a an and as at but by for from in into nor of on onto or over per the to under via vs with without'.split(' '));
+const PARTICLES = new Set('ibn bin bint ben bar al el de da di del della dei der den des du dos das van von vom zu zur ter ten te af av la le lo y e'.split(' '));
+const cap = (w) => w.charAt(0).toUpperCase() + w.slice(1);
+export function displayTitle(name, person = false) {
+  let k = -1;
+  return String(name).split(/(\s+)/).map((w) => {
+    if (!w || /^\s+$/.test(w)) return w;
+    k += 1;
+    if (/[A-Z]/.test(w) || !/^[a-z]/.test(w)) return w;
+    const lower = w.toLowerCase();
+    if (person) {
+      if (PARTICLES.has(lower)) return w;
+      const m = w.match(/^(al|el|ad|an|ar|as|at|az|ash|ibn)-(.+)$/);
+      if (m) return `${m[1]}-${cap(m[2])}`;
+      return w.split('-').map(cap).join('-');
+    }
+    if (k > 0 && SMALL.has(lower)) return w;
+    if (/^[a-z](-|$)/.test(w)) return w; // n-category, x
+    return cap(w);
+  }).join('');
+}

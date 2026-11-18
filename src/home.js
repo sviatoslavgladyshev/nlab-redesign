@@ -2,18 +2,18 @@
 // random page, "find or create a page", and a working LaTeX editor demo).
 import './main.js';
 import './home.css';
-import { esc, clean, pageUrl, fetchSource, loadIndex } from './nlab.js';
+import { esc, clean, pageUrl, fetchSource, loadIndex, displayTitle } from './nlab.js';
 import { attachSuggest, randomPage, loadNames, pageExists } from './suggest.js';
 import { latestEdits } from './forum-data.js';
 import credits from './data/credits.json';
 
 const $ = (s) => document.querySelector(s);
 
-// Old links pointed at CQTS anchors on the home page; those sections now live on cqts.html.
+// Old links pointed at CQTS anchors on the home page; those sections now live on cqts/.
 const cqtsAnchors = ['cqts', 'Symposium2026', 'CQTSSymposium2026Materials', 'GladyshevSymposium2026', 'GolubSymposium2026',
   'SchreiberSymposium2026', 'SingSymposium2026', 'colloquium', 'research', 'events'];
 const hash = decodeURIComponent(location.hash.slice(1));
-if (cqtsAnchors.includes(hash)) location.replace(`cqts.html${location.search}${hash === 'cqts' ? '' : `#${hash}`}`);
+if (cqtsAnchors.includes(hash)) location.replace(`cqts/${location.search}${hash === 'cqts' ? '' : `#${hash}`}`);
 
 /* ---------- Page count ---------- */
 loadIndex().then(({ count }) => {
@@ -33,7 +33,7 @@ if (open) {
     if (!q) { open.querySelector('input').focus(); return; }
     await loadNames();
     const exact = pageExists(q);
-    location.href = exact ? `${pageUrl(exact)}&edit` : `${pageUrl(q)}&new`;
+    location.href = exact ? `${pageUrl(exact, 'edit')}` : `${pageUrl(q, 'new')}`;
   });
 }
 
@@ -50,10 +50,10 @@ async function renderEdits() {
   try {
     const edits = await latestEdits(6);
     if (!edits.length) throw new Error('empty');
-    list.innerHTML = edits.map((e) => `<li><a href="${esc(pageUrl(e.page))}" title="${esc(e.summary || '')}"><b>${esc(e.page)}</b><time>${esc(rel(e.when))}</time><span>${esc(e.author || 'anonymous')}${e.summary ? ` — ${esc(e.summary.slice(0, 70))}${e.summary.length > 70 ? '…' : ''}` : ''}</span></a></li>`).join('');
+    list.innerHTML = edits.map((e) => `<li><a href="${esc(pageUrl(e.page))}" title="${esc(e.summary || '')}"><b>${esc(displayTitle(e.page))}</b><time>${esc(rel(e.when))}</time><span>${esc(e.author || 'anonymous')}${e.summary ? ` — ${esc(e.summary.slice(0, 70))}${e.summary.length > 70 ? '…' : ''}` : ''}</span></a></li>`).join('');
     $('#edits-when').textContent = '';
   } catch {
-    list.innerHTML = '<li class="edits-loading">Recent edits are listed under <a href="page.html?recent">Recent changes</a>.</li>';
+    list.innerHTML = '<li class="edits-loading">Recent edits are listed under <a href="recent">Recent changes</a>.</li>';
   }
 }
 renderEdits();

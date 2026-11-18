@@ -3,7 +3,7 @@
 import { icons } from './main.js';
 import './article.css';
 import './editor.css';
-import { esc, clean, pageUrl, fetchSource, resolvePage, searchPages, loadIndex, PageNotFound } from './nlab.js';
+import { esc, clean, pageUrl, fetchSource, resolvePage, searchPages, loadIndex, PageNotFound, displayTitle } from './nlab.js';
 import { renderSource, expandIncludes, contextSource, resolveRefs } from './markup.js';
 import { openWorkspace, drafts } from './editor.js';
 import { latestEdits, allTopics } from './forum-data.js';
@@ -52,6 +52,34 @@ const previewIO = new IntersectionObserver((entries) => {
   });
 }, { rootMargin: '300px' });
 
+/* Focus reading (ADHD-friendly): Lexend, wider spacing and bold word beginnings ("bionic" anchors).
+   Formulas, code and diagrams are left as they are. */
+const FOCUS_KEY = 'nlab-focus-read';
+const focusOn = () => { try { return localStorage.getItem(FOCUS_KEY) === '1'; } catch { return false; } };
+export function applyFocusRead(root, on = focusOn()) {
+  root.classList.toggle('focus-read', on);
+  root.querySelectorAll('b.bx').forEach((b) => b.replaceWith(b.textContent));
+  root.normalize();
+  if (!on) return;
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode: (n) => (n.parentElement.closest('.katex, .m, .eq, code, pre, figure, script, style, h1, h2, h3, h6, .ref') || !/[A-Za-z]{2}/.test(n.nodeValue)
+      ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT),
+  });
+  const nodes = [];
+  while (walker.nextNode()) nodes.push(walker.currentNode);
+  nodes.forEach((n) => {
+    const frag = document.createDocumentFragment();
+    n.nodeValue.split(/(\p{L}+)/u).forEach((part) => {
+      if (/^\p{L}{2,}$/u.test(part)) {
+        const k = part.length <= 3 ? 1 : Math.ceil(part.length * 0.45);
+        const b = document.createElement('b'); b.className = 'bx'; b.textContent = part.slice(0, k);
+        frag.append(b, part.slice(k));
+      } else if (part) frag.append(part);
+    });
+    n.replaceWith(frag);
+  });
+}
+
 // Bullet lists that are only links to other pages ("Related entries", "Basic facts"…) become a card grid
 function linkLists(root) {
   const linksOf = (li) => [...li.querySelectorAll(':scope > a[href], :scope > p > a[href]')];
@@ -73,6 +101,7 @@ function linkLists(root) {
         const title = document.createElement('span');
         title.className = 'll-t';
         title.append(...a.childNodes);
+        if (title.childNodes.length === 1 && title.firstChild.nodeType === 3) title.textContent = displayTitle(title.textContent);
         a.append(title);
         if (a.dataset.wiki) { a.insertAdjacentHTML('beforeend', '<span class="ll-ex"><span class="ll-skel"></span><span class="ll-skel short"></span></span>'); previewIO.observe(a); }
         a.insertAdjacentHTML('beforeend', '<span class="ll-go" aria-hidden="true">→</span>');
@@ -85,10 +114,21 @@ function linkLists(root) {
   });
 }
 
+// Diagrams the build hasn't pre-rendered yet: show their source instead of a broken image
+export function diagramFallback(root) {
+  root.querySelectorAll('img[data-diagram]').forEach((img) => img.addEventListener('error', () => {
+    const fig = img.closest('figure');
+    fig?.classList.add('no-render');
+    const d = fig?.querySelector('details');
+    if (d) { d.open = true; d.querySelector('summary').textContent = 'Diagram (TikZ source)'; }
+    img.remove();
+  }, { once: true }));
+}
+
 async function markMissing(root) {
   const links = $$('a[data-wiki]', root);
   await Promise.all(links.map(async (a) => {
-    if (!(await resolvePage(a.dataset.wiki.split('#')[0]))) { a.classList.add('missing'); a.title = 'This page doesn’t exist yet — click to create it'; a.href += '&new'; }
+    if (!(await resolvePage(a.dataset.wiki.split('#')[0]))) { a.classList.add('missing'); a.title = 'This page doesn’t exist yet — click to create it'; a.href = pageUrl(a.dataset.wiki.split('#')[0], 'new'); }
   }));
 }
 
@@ -120,6 +160,14 @@ function buildToc(body) {
   }, { rootMargin: '-80px 0px -70% 0px' });
   heads.forEach((h) => spy.observe(h));
 }
+// Phones: the contents become a floating button with a bottom sheet
+const tocFab = Object.assign(document.createElement('button'), { type: 'button', className: 'toc-fab', innerHTML: '<i data-lucide="list-tree"></i><span>Contents</span>' });
+tocFab.setAttribute('aria-expanded', 'false');
+document.body.append(tocFab);
+const toggleToc = (on) => { $('#a-side').classList.toggle('open', on); tocFab.setAttribute('aria-expanded', String(on)); document.body.classList.toggle('sheet-open', on && innerWidth <= 960); };
+tocFab.addEventListener('click', () => toggleToc(!$('#a-side').classList.contains('open')));
+$('#a-side').addEventListener('click', (e) => { if (e.target.closest('a') || e.target === $('#a-side')) toggleToc(false); });
+
 function activateTab(name) {
   $$('.side-tabs button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
   $$('[data-panel]').forEach((p) => { p.hidden = p.dataset.panel !== name; });
@@ -132,7 +180,9 @@ async function renderInto(body, src) {
   clean(body);
   numberEnvs(body);
   resolveRefs(body);
+  diagramFallback(body);
   linkLists(body);
+  applyFocusRead(body);
   markMissing(body);
   buildToc(body);
 }
@@ -235,7 +285,8 @@ function listDrafts() {
   return out.sort((a, b) => b.savedAt - a.savedAt);
 }
 function renderWrite() {
-  setHero({ title: 'Write an article', crumb: 'Write', meta: 'Give it a title, pick a starting point, and write. Your work is saved as you go, and you publish when it’s ready.' });
+  scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  setHero({ title: 'Sandbox', crumb: 'Sandbox', meta: 'Draft a new article here. New pages can be edited directly; existing nLab pages accept suggestions from readers.' });
   const body = $('#a-body');
   body.classList.add('loaded', 'is-search');
   const drafts = listDrafts();
@@ -246,11 +297,11 @@ function renderWrite() {
       <fieldset class="w-tpls"><legend>Start from</legend>
         ${Object.entries(TEMPLATES).map(([k, t], i) => `<label class="w-tpl"><input type="radio" name="tpl" value="${k}" ${i === 0 ? 'checked' : ''}><span class="w-ic"><i data-lucide="${t.icon}"></i></span><b>${t.label}</b><small>${t.note}</small></label>`).join('')}
       </fieldset>
-      <div class="w-go"><button class="tbtn primary" type="submit"><i data-lucide="pen-line"></i><span>Start writing</span></button></div>
+      <div class="w-go"><button class="tbtn primary" type="submit"><i data-lucide="pen-line"></i><span>Open Sandbox</span></button></div>
     </form>
     <section class="w-drafts" id="drafts">
       <h2>Your drafts</h2>
-      ${drafts.length ? `<ul>${drafts.map((d) => `<li><a href="${esc(pageUrl(d.name))}&edit"><b>${esc(d.name)}</b><span>${d.isNew ? 'New article' : 'Edit of an existing page'} · saved ${new Date(d.savedAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span></a></li>`).join('')}</ul>`
+      ${drafts.length ? `<ul>${drafts.map((d) => `<li><a href="${esc(pageUrl(d.name, 'edit'))}"><b>${esc(d.name)}</b><span>${d.isNew ? 'New article' : 'Edit of an existing page'} · saved ${new Date(d.savedAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span></a></li>`).join('')}</ul>`
         : '<p class="w-none">No drafts yet. Anything you start writing appears here, saved in this browser.</p>'}
     </section>`;
   icons();
@@ -263,7 +314,7 @@ function renderWrite() {
       const q = input.value.trim();
       const hit = q && await resolvePage(q);
       $('#w-hint').innerHTML = hit
-        ? `There is already a page <a href="${esc(pageUrl(hit.name))}">${esc(hit.name)}</a>. <a href="${esc(pageUrl(hit.name))}&edit">Improve it instead</a>, or choose a different title.`
+        ? `There is already a page <a href="${esc(pageUrl(hit.name))}">${esc(hit.name)}</a>. <a href="${esc(pageUrl(hit.name, 'suggest'))}">Suggest an edit</a>, or choose a different title.`
         : 'Use the name of the concept, result or person, as you would in a dictionary.';
     }, 200);
   });
@@ -272,11 +323,13 @@ function renderWrite() {
     const q = input.value.trim();
     if (!q) return;
     const hit = await resolvePage(q);
-    location.href = hit ? `${pageUrl(hit.name)}&edit` : `${pageUrl(q)}&new&tpl=${new FormData(e.target).get('tpl')}`;
+    location.href = hit ? `${pageUrl(hit.name, 'suggest')}` : `${pageUrl(q, 'new&tpl=')}${new FormData(e.target).get('tpl')}`;
   });
 }
 
 const state = { name: '', published: '', exists: true, showingDraft: false };
+const isSandbox = (name) => /^sandbox(?:\d+)?$/i.test(String(name || '').trim());
+const canDirectEdit = () => !state.exists || isSandbox(state.name);
 
 async function showArticle(which) {
   const d = drafts.get(state.name);
@@ -288,7 +341,7 @@ async function showArticle(which) {
     body.innerHTML = `<div class="a-empty">
       <p class="lead">There is no page called “${esc(state.name)}” yet.</p>
       <p>You can start it now: write in the visual editor or in LaTeX, and publish it to the nLab when it’s ready.</p>
-      <p class="mt-s">${link('Create this page', 'file-plus-2', `${pageUrl(state.name)}&new`, true)} ${link('Search for similar pages', 'search', `page.html?search=${encodeURIComponent(state.name)}`)}</p>
+      <p class="mt-s">${link('Create this page', 'file-plus-2', `${pageUrl(state.name, 'new')}`, true)} ${link('Search for similar pages', 'search', `search?q=${encodeURIComponent(state.name)}`)}</p>
     </div>`;
     buildToc(body);
   } else await renderInto(body, src);
@@ -297,12 +350,14 @@ async function showArticle(which) {
   const meta = useDraft
     ? `<span class="badge draft">Your draft</span> saved ${new Date(d.savedAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`
     : state.exists ? `${words.toLocaleString()} words · from the nLab, as of ${new Date(idx.committed || Date.now()).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}` : 'New page';
+  const direct = canDirectEdit();
   setHero({
-    title: state.name,
+    title: displayTitle(state.name, /^category:\s*people/im.test(state.published)),
     meta,
-    actions: `<button type="button" class="tbtn primary" data-act="edit" title="Edit this page (E)"><i data-lucide="pencil"></i><span>${state.exists ? 'Edit' : 'Create'}</span></button>`
-      + link('Discuss', 'messages-square', `forum.html?q=${encodeURIComponent(state.name)}`)
-      + btn('Copy link', 'link', 'data-act="share"'),
+    actions: `<button type="button" class="tbtn primary" data-act="${direct ? 'edit' : 'suggest'}" title="${direct ? 'Edit this page (E)' : 'Suggest an edit'}"><i data-lucide="${direct ? 'pencil' : 'message-square-plus'}"></i><span>${direct ? (state.exists ? 'Edit' : 'Create') : 'Suggest an edit'}</span></button>`
+      + link('Discuss', 'messages-square', `forum/?q=${encodeURIComponent(state.name)}`)
+      + btn('Copy link', 'link', 'data-act="share"')
+      + `<button type="button" class="tbtn" data-act="focus-read" aria-pressed="${focusOn()}" title="Easier reading: Lexend font, wider spacing and bold word beginnings"><i data-lucide="book-text"></i><span>Focus reading</span></button>`,
   });
   const bar = $('#draft-bar');
   bar.hidden = !d;
@@ -317,6 +372,7 @@ async function showArticle(which) {
 }
 
 async function renderArticle(requested) {
+  scrollTo({ top: 0, left: 0, behavior: 'auto' });
   $('#crumb-current').textContent = requested;
   let name = requested, source = '';
   try {
@@ -326,26 +382,27 @@ async function renderArticle(requested) {
     if (!(e instanceof PageNotFound)) throw e;
     state.exists = false;
   }
-  if (name !== requested) { const u = new URL(location.href); u.searchParams.set('p', name); history.replaceState(null, '', u); }
+  if (name !== requested) history.replaceState(null, '', `${new URL(pageUrl(name), document.baseURI).pathname}${location.search}${location.hash}`);
   Object.assign(state, { name, published: source });
   $('#a-body').classList.add('loaded');
   if (state.exists) await renderContext(source);
   await showArticle(drafts.get(name) ? 'draft' : 'published');
 
-  if (params.has('edit') || params.has('new')) openEditor();
+  if (params.has('edit') || params.has('new') || params.has('suggest')) openEditor(params.has('suggest') || (params.has('edit') && !canDirectEdit()));
   else if (location.hash) document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView();
 }
 
-function openEditor() {
+function openEditor(suggestion = !canDirectEdit()) {
   const d = drafts.get(state.name);
   const start = d?.source ?? (state.exists ? state.published : NEW_TEMPLATE(state.name));
-  const u = new URL(location.href); u.searchParams.delete('new'); u.searchParams.set('edit', ''); history.replaceState(null, '', u.href.replace(/edit=(&|$)/, 'edit$1'));
+  const u = new URL(location.href); u.searchParams.delete('new'); u.searchParams.delete('edit'); u.searchParams.delete('suggest'); u.searchParams.set(suggestion ? 'suggest' : 'edit', ''); history.replaceState(null, '', u);
   openWorkspace({
-    name: state.name, original: state.exists ? state.published : '', start, isNew: !state.exists,
+    name: state.name, original: state.exists ? state.published : '', start, isNew: !state.exists, suggestion,
     onExit: (how) => {
-      const v = new URL(location.href); v.searchParams.delete('edit'); history.replaceState(null, '', v);
+      const v = new URL(location.href); v.searchParams.delete('edit'); v.searchParams.delete('suggest'); history.replaceState(null, '', v);
       showArticle(drafts.get(state.name) ? 'draft' : 'published');
       if (how === 'published') toast('Thanks! It may take a little while for the nLab mirror to show your change here.');
+      else if (how === 'suggested') toast('Suggestion prepared. Share it in the forum so an author can review it.');
       else if (drafts.get(state.name)) toast('Draft saved in this browser.');
     },
   });
@@ -361,20 +418,20 @@ async function renderSearch(q) {
   setHero({
     title: `“${q}”`, crumb: 'Search',
     meta: `${total.toLocaleString()} page${total === 1 ? '' : 's'}${disc.length ? ` · ${disc.length} forum discussion${disc.length === 1 ? '' : 's'}` : ''}`,
-    actions: exact ? link(`Open “${exact.name}”`, 'arrow-right', pageUrl(exact.name), true) : link(`Create “${q}”`, 'file-plus-2', `${pageUrl(q)}&new`, true),
+    actions: exact ? link(`Open “${exact.name}”`, 'arrow-right', pageUrl(exact.name), true) : link(`Create “${q}”`, 'file-plus-2', `${pageUrl(q, 'new')}`, true),
   });
   const body = $('#a-body');
   body.classList.add('loaded', 'is-search');
   body.innerHTML = `
-    ${hits.length ? `<section class="s-group"><h2>Pages</h2><div class="s-grid">${hits.map((h) => `<a class="s-item" href="${esc(pageUrl(h.name))}">${esc(h.name)}${h.via ? `<small>also called “${esc(h.via)}”</small>` : ''}</a>`).join('')}</div>${total > hits.length ? `<p class="s-more">Showing ${hits.length} of ${total.toLocaleString()}. Refine your search to narrow it down.</p>` : ''}</section>` : ''}
-    ${disc.length ? `<section class="s-group"><h2>In the forum</h2><div class="s-list">${disc.map((t) => `<a href="forum.html?c=${t.channelId}&t=${encodeURIComponent(t.t)}"><b>${esc(t.t)}</b><span>${esc(t.channel)} · ${t.n} message${t.n === 1 ? '' : 's'} · ${rel(t.last)}</span></a>`).join('')}</div></section>` : ''}
-    ${!hits.length && !disc.length ? `<div class="a-empty"><p class="lead">No page is called anything like “${esc(q)}”.</p><p>${link(`Create the page “${q}”`, 'file-plus-2', `${pageUrl(q)}&new`, true)}</p></div>` : ''}`;
+    ${hits.length ? `<section class="s-group"><h2>Pages</h2><div class="s-grid">${hits.map((h) => `<a class="s-item" href="${esc(pageUrl(h.name))}">${esc(displayTitle(h.name))}${h.via ? `<small>also called “${esc(h.via)}”</small>` : ''}</a>`).join('')}</div>${total > hits.length ? `<p class="s-more">Showing ${hits.length} of ${total.toLocaleString()}. Refine your search to narrow it down.</p>` : ''}</section>` : ''}
+    ${disc.length ? `<section class="s-group"><h2>In the forum</h2><div class="s-list">${disc.map((t) => `<a href="forum/?c=${t.channelId}&t=${encodeURIComponent(t.t)}"><b>${esc(t.t)}</b><span>${esc(t.channel)} · ${t.n} message${t.n === 1 ? '' : 's'} · ${rel(t.last)}</span></a>`).join('')}</div></section>` : ''}
+    ${!hits.length && !disc.length ? `<div class="a-empty"><p class="lead">No page is called anything like “${esc(q)}”.</p><p>${link(`Create the page “${q}”`, 'file-plus-2', `${pageUrl(q, 'new')}`, true)}</p></div>` : ''}`;
   icons();
 }
 
 /* ---------------- Recent changes ---------------- */
 async function renderRecent() {
-  setHero({ title: 'Recent changes', crumb: 'Recent changes', meta: 'Every edit to the nLab is announced in the forum, with its author’s summary.', actions: link('Discussions', 'messages-square', 'forum.html') });
+  setHero({ title: 'Recent changes', crumb: 'Recent changes', meta: 'Every edit to the nLab is announced in the forum, with its author’s summary.', actions: link('Discussions', 'messages-square', 'forum/') });
   const edits = await latestEdits(80);
   const body = $('#a-body');
   body.classList.add('loaded', 'is-search');
@@ -382,7 +439,7 @@ async function renderRecent() {
   body.innerHTML = `<ol class="recent">${edits.map((e) => {
     const d = new Date(e.when * 1000).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
     const head = d !== day ? `<li class="r-day">${(day = d)}</li>` : '';
-    return `${head}<li class="r-item"><a class="r-page" href="${esc(pageUrl(e.page))}">${esc(e.page)}</a>
+    return `${head}<li class="r-item"><a class="r-page" href="${esc(pageUrl(e.page))}">${esc(displayTitle(e.page))}</a>
       <p>${e.summary ? esc(e.summary) : '<i>No summary</i>'}</p>
       <span class="r-meta">${esc(e.author || 'anonymous')}${e.rev ? ` · revision ${esc(e.rev)}` : ''} · ${new Date(e.when * 1000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span></li>`;
   }).join('')}</ol>`;
@@ -415,14 +472,20 @@ document.addEventListener('click', async (e) => {
   const b = e.target.closest('[data-act]');
   if (!b) return;
   const act = b.dataset.act;
-  if (act === 'edit') openEditor();
+  if (act === 'edit') openEditor(false);
+  else if (act === 'suggest') openEditor(true);
   else if (act === 'toggle-published') showArticle(state.showingDraft ? 'published' : 'draft');
   else if (act === 'random-all') location.href = pageUrl(state.allNames[Math.floor(Math.random() * state.allNames.length)]);
-  else if (act === 'share') { try { await navigator.clipboard.writeText(location.href.replace(/[?&]edit\b/, '')); toast('Link copied.'); } catch { toast(location.href); } }
+  else if (act === 'focus-read') {
+    const on = !focusOn();
+    try { localStorage.setItem(FOCUS_KEY, on ? '1' : '0'); } catch { /* ignore */ }
+    b.setAttribute('aria-pressed', String(on));
+    applyFocusRead($('#a-body'), on);
+  } else if (act === 'share') { try { await navigator.clipboard.writeText(location.href.replace(/[?&]edit\b/, '')); toast('Link copied.'); } catch { toast(location.href); } }
 });
 addEventListener('keydown', (e) => {
   if (state.name && !document.body.classList.contains('ws-open') && e.key === 'e' && !e.metaKey && !e.ctrlKey && !e.altKey
-    && !/input|textarea|select/i.test(document.activeElement?.tagName) && !document.activeElement?.isContentEditable) { e.preventDefault(); openEditor(); }
+    && !/input|textarea|select/i.test(document.activeElement?.tagName) && !document.activeElement?.isContentEditable) { e.preventDefault(); openEditor(!canDirectEdit()); }
 });
 
 /* ---------------- Router ---------------- */
@@ -431,11 +494,32 @@ function showError(name, err) {
   $('#a-body').innerHTML = `<div class="a-empty"><p class="lead">${esc(err.message || String(err))}</p><p class="mt-s">${link('Back to the home page', 'arrow-left', './')}</p></div>`;
   icons();
 }
-const q = params.get('search');
-const name = params.get('p');
-if (q) renderSearch(q).catch((e) => showError(`Search: ${q}`, e));
-else if (params.has('recent')) renderRecent().catch((e) => showError('Recent changes', e));
-else if (params.has('all')) renderAll().catch((e) => showError('All pages', e));
-else if (params.has('write')) renderWrite();
-else if (!name || name === 'HomePage') location.replace('./');
-else renderArticle(name).catch((e) => showError(name, e));
+// Clean URLs (relative to the site root): wiki/<Name>, search?q=…, recent, all, write.
+history.scrollRestoration = 'manual';
+// This app is also the site's 404 page, so it handles every unknown path and old .html links.
+const BASE = new URL(document.baseURI).pathname;
+const path = decodeURIComponent((location.pathname.startsWith(BASE) ? location.pathname.slice(BASE.length) : location.pathname.replace(/^\//, '')).replace(/\+/g, ' '));
+const go = (to) => location.replace(`${new URL(to, document.baseURI).href}${location.hash}`);
+const legacy = path.match(/^(page|library|forum|cqts|index)\.html$/);
+if (legacy) {
+  const p = new URLSearchParams(location.search);
+  if (legacy[1] === 'page') {
+    if (p.get('p')) go(pageUrl(p.get('p'), ['edit', 'new'].filter((k) => p.has(k)).join('&')));
+    else if (p.get('search')) go(`search?q=${encodeURIComponent(p.get('search'))}`);
+    else go(['recent', 'all', 'write'].find((k) => p.has(k)) || './');
+  } else go(legacy[1] === 'index' ? './' : `${legacy[1]}/${location.search}`);
+} else {
+  const article = path.match(/^wiki\/(.+?)\/?$/);
+  const view = path.replace(/\/$/, '');
+  if (article) renderArticle(article[1]).catch((e) => showError(article[1], e));
+  else if (view === 'search') renderSearch(params.get('q') || '').catch((e) => showError('Search', e));
+  else if (view === 'recent') renderRecent().catch((e) => showError('Recent changes', e));
+  else if (view === 'all') renderAll().catch((e) => showError('All pages', e));
+  else if (view === 'write') renderWrite();
+  else if (view === 'wiki' || view === '') location.replace(document.baseURI);
+  else {
+    setHero({ title: 'Page not found', meta: 'There is nothing at this address.' });
+    $('#a-body').innerHTML = `<div class="a-empty"><p class="lead">Try the search above, or ${link('open the library', 'library', 'library/')}</p></div>`;
+    icons();
+  }
+}

@@ -7,6 +7,7 @@ import MarkdownIt from 'markdown-it';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import { pageUrl, esc } from './nlab.js';
+import { hashSource, TIKZ_RE } from './hash.js';
 
 const md = new MarkdownIt({ html: true, linkify: false, typographer: false });
 
@@ -50,12 +51,38 @@ const MACROS = {
   '\\root': '\\sqrt[#1]{#2}', '\\vol': '\\mathrm{vol}', '\\arrayopts': '', '\\cod': '\\mathrm{cod}', '\\Ker': '\\mathrm{Ker}',
   '\\coker': '\\mathrm{coker}', '\\Aut': '\\mathrm{Aut}', '\\End': '\\mathrm{End}', '\\Spec': '\\mathrm{Spec}',
 };
+// itex allows "\widetilde \widetilde {x}"; KaTeX needs "\widetilde{\widetilde{x}}"
+const ACC = '(?:widetilde|widehat|tilde|hat|bar|overline|underline|vec|dot|ddot)';
+const ACC_RE = new RegExp(`\\\\${ACC}\\s*(?=\\\\${ACC})`);
+function nestAccents(t) {
+  const m = t.match(ACC_RE);
+  if (!m) return t;
+  let i = m.index + m[0].length; // start of the inner accent
+  const inner = t.slice(i).match(new RegExp(`^\\\\${ACC}\\s*`));
+  let j = i + inner[0].length;
+  if (t[j] === '{') { let d = 0; for (; j < t.length; j++) { if (t[j] === '{') d++; else if (t[j] === '}' && --d === 0) { j++; break; } } } else j += 1;
+  return `${t.slice(0, m.index)}${m[0].trimEnd()}{${t.slice(i, j)}}${t.slice(j)}`;
+}
+const decodeEntities = (t) => t.replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+  .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(+d)).replace(/&nbsp;/g, ' ');
+// Typeset with KaTeX; on failure retry with fixes for common itex habits, and as a last resort
+// show the formula's source quietly (never as a red error).
 const renderMath = (tex, displayMode) => {
-  try {
-    return katex.renderToString(itexToKatex(tex.trim()), { displayMode, throwOnError: false, strict: 'ignore', trust: false, macros: { ...MACROS } });
-  } catch {
-    return `<code class="math-error">${esc(tex)}</code>`;
+  let t = decodeEntities(itexToKatex(tex.trim()));
+  const macros = { ...MACROS };
+  for (let attempt = 0; attempt < 8; attempt++) {
+    try {
+      return katex.renderToString(t, { displayMode, throwOnError: true, strict: 'ignore', trust: false, macros });
+    } catch (e) {
+      const msg = String(e.message || e);
+      const undef = msg.match(/Undefined control sequence: \\([A-Za-z]+)/);
+      if (undef) { macros[`\\${undef[1]}`] = `\\operatorname{${undef[1]}}`; continue; }
+      if (/with no arguments as (sub|super)script/.test(msg)) { t = t.replace(/([_^])\s*(\\[A-Za-z]+)/g, '$1{$2}'); continue; }
+      if (/Unexpected end of input in a macro argument/.test(msg) && ACC_RE.test(t)) { t = nestAccents(t); continue; }
+      break;
+    }
   }
+  return `<code class="math-fallback" title="This formula uses notation that can’t be typeset here yet">${esc(tex.trim())}</code>`;
 };
 
 const slug = (s) => s.toLowerCase().replace(/<[^>]+>/g, '').replace(/[^\p{L}\p{N}]+/gu, '_').replace(/^_|_$/g, '') || 'section';
@@ -63,21 +90,51 @@ const slug = (s) => s.toLowerCase().replace(/<[^>]+>/g, '').replace(/[^\p{L}\p{N
 // Parse `{: .a .b #id key="v"}` into attributes
 function ial(attr) {
   const classes = [...attr.matchAll(/\.([\w-]+)/g)].map((m) => m[1]);
-  const id = (attr.match(/#([\w-]+)/) || [])[1];
+  const id = (attr.match(/#([^\s}.]+)/) || [])[1];
   return { classes, id };
 }
 
 // LaTeX-style environments → nLab blocks: \begin{theorem} … \end{theorem}
-const ENV_CLASS = { definition: 'defn', defn: 'defn', proposition: 'prop', prop: 'prop', theorem: 'theorem', lemma: 'lemma', corollary: 'cor', example: 'example', remark: 'remark', proof: 'proof' };
-const ENV_LABEL = { defn: 'Definition', prop: 'Proposition', theorem: 'Theorem', lemma: 'Lemma', cor: 'Corollary', example: 'Example', remark: 'Remark', proof: 'Proof' };
+const ENV_CLASS = {
+  definition: 'defn', defn: 'defn', proposition: 'prop', prop: 'prop', theorem: 'theorem', thm: 'theorem', lemma: 'lemma', lem: 'lemma',
+  corollary: 'cor', cor: 'cor', example: 'example', examples: 'example', remark: 'remark', rmk: 'remark', remarks: 'remark',
+  conjecture: 'conjecture', notation: 'notation', note: 'note', claim: 'claim', assumption: 'assumption', exercise: 'exercise', proof: 'proof',
+};
+const ENV_LABEL = { defn: 'Definition', prop: 'Proposition', theorem: 'Theorem', lemma: 'Lemma', cor: 'Corollary', example: 'Example', remark: 'Remark',
+  conjecture: 'Conjecture', notation: 'Notation', note: 'Note', claim: 'Claim', assumption: 'Assumption', exercise: 'Exercise', proof: 'Proof' };
+const ENV_NAMES = Object.keys(ENV_CLASS).join('|');
 function latexEnvs(s) {
   return s
-    .replace(/^[ \t]*\\begin\{(definition|defn|proposition|prop|theorem|lemma|corollary|example|remark|proof)\}(?:\[([^\]\n]*)\])?[ \t]*$/gm, (_, env, title) => {
+    .replace(new RegExp(String.raw`^[ \t]*\\begin\{(${ENV_NAMES})\}(?:\[([^\]\n]*)\])?[ \t]*(?:\\label\{([^}\s]+)\})?[ \t]*$`, 'gm'), (_, env, title, label) => {
       const cls = ENV_CLASS[env];
       const head = `###### ${ENV_LABEL[cls]}${title ? ` (${title})` : ''}`;
-      return cls === 'proof' ? `+-- {: .proof}\n${head}\n` : `+-- {: .num_${cls}}\n${head}\n`;
+      const id = label ? ` #${label}` : '';
+      return cls === 'proof' ? `+-- {: .proof${id}}\n${head}\n` : `+-- {: .num_${cls}${id}}\n${head}\n`;
     })
-    .replace(/^[ \t]*\\end\{(definition|defn|proposition|prop|theorem|lemma|corollary|example|remark|proof)\}[ \t]*$/gm, '\n=--');
+    .replace(new RegExp(String.raw`[ \t]*\\end\{(${ENV_NAMES})\}[ \t]*$`, 'gm'), '\n\n=--')
+    .replace(/^[ \t]*\\begin\{(center|centre)\}[ \t]*$/gm, '+-- {: .center}\n')
+    .replace(/^[ \t]*\\end\{(center|centre)\}[ \t]*$/gm, '\n=--')
+    .replace(/^[ \t]*\\(section|subsection|subsubsection)\*?\{([^}]*)\}[ \t]*(?:\\label\{([\w-]+)\})?[ \t]*$/gm, (_, lvl, title, label) =>
+      `${{ section: '##', subsection: '###', subsubsection: '####' }[lvl]} ${title}${label ? `\n{#${label}}` : ''}`);
+}
+
+// Images: \begin{imagefromfile} "file_name": "x.png", "width": 300, … \end{imagefromfile}
+function images(s, store) {
+  return s.replace(/\\begin\{imagefromfile\}([\s\S]*?)\\end\{imagefromfile\}/g, (_, body) => {
+    const get = (k) => (body.match(new RegExp(`"${k}"\\s*:\\s*"?([^",\\n}]+)"?`)) || [])[1]?.trim();
+    const file = get('file_name');
+    if (!file) return '';
+    const width = get('width');
+    const unit = get('unit') || 'px';
+    const caption = get('caption');
+    const float = get('float');
+    return `\n\n${ph(store, `<figure class="nfig${float === 'right' || float === 'left' ? ` f-${float}` : ''}"><img src="https://ncatlab.org/nlab/files/${esc(encodeURIComponent(file))}" alt="${esc(caption || file)}" loading="lazy"${width ? ` style="max-width:${esc(width)}${esc(unit)}"` : ''}>${caption ? `<figcaption>${esc(caption)}</figcaption>` : ''}</figure>`)}\n\n`;
+  });
+}
+
+// Diagrams (tikzcd / tikzpicture / xymatrix): the nLab's own rendering, saved at build time
+function diagrams(s, store) {
+  return s.replace(TIKZ_RE, (block) => `\n\n${ph(store, `<figure class="diagram"><img src="snapshot/tikz/${hashSource(block)}.svg" alt="Diagram" loading="lazy" data-diagram><details><summary>Diagram source</summary><pre>${esc(block)}</pre></details></figure>`)}\n\n`);
 }
 
 // Replace [[!include page]] by that page's source (two levels deep).
@@ -114,13 +171,15 @@ export function renderSource(src, { context = false } = {}) {
   const math = newStore('m');
   const links = newStore('l');
   let s = latexEnvs(src.replace(/\r\n?/g, '\n'));
+  s = diagrams(images(s, links), links);
+  s = s.replace(/\\begin\{svg\}[\s\S]*?\\end\{svg\}/g, '');
 
   // 1. Math first, so nothing below touches TeX. Order: display, then inline.
   const display = (t) => ph(math, `<div class="eq" data-tex="${esc(t.trim())}">${renderMath(t, true)}</div>`);
   s = s.replace(/\$\$([\s\S]+?)\$\$/g, (_, t) => display(t));
   s = s.replace(/\\\[([\s\S]+?)\\\]/g, (_, t) => display(t));
   s = s.replace(/\\begin\{(equation\*?|align\*?)\}([\s\S]+?)\\end\{\1\}/g, (_, env, t) => display(env.startsWith('align') ? `\\begin{aligned}${t}\\end{aligned}` : t));
-  s = s.replace(/(^|[^\\$])\$(?!\s)((?:\\\$|[^$\n])+?)\$/g, (_, pre, t) => pre + ph(math, `<span class="m" data-tex="${esc(t)}">${renderMath(t, false)}</span>`));
+  s = s.replace(/(^|[^\\$])\$(?!\$)((?:\\\$|[^$\n])*?[^\s$](?:\\\$|[^$\n])*?)\$/g, (_, pre, t) => pre + ph(math, `<span class="m" data-tex="${esc(t)}">${renderMath(t, false)}</span>`));
 
   // Text-mode LaTeX (outside math): layout commands are dropped, formatting commands applied
   s = s.replace(/^[ \t]*\\(tableofcontents|maketitle|linebreak|newline|newpage|clearpage|noindent|par|medskip|bigskip|smallskip|vfill|hfill|centering)\b[ \t]*$/gm, '');
@@ -132,8 +191,9 @@ export function renderSource(src, { context = false } = {}) {
   s = s.replace(/\\texttt\{([^{}]*)\}/g, '`$1`');
   s = s.replace(/\\(?:textrm|text|mbox)\{([^{}]*)\}/g, '$1');
 
-  // \ref{label} outside math → a link that shows the referenced environment's number
-  s = s.replace(/\\ref\{([\w-]+)\}/g, (_, id) => ph(links, `<a class="ref" href="#${esc(id)}" data-ref="${esc(id)}">${esc(id)}</a>`));
+  // \label / \ref / \eqref outside math: anchors and links that show the referenced number
+  s = s.replace(/\\label\{([^}\s]+)\}/g, (_, id) => ph(links, `<a id="${esc(id)}" class="label-anchor"></a>`));
+  s = s.replace(/\\(eq)?ref\{([^}\s]+)\}/g, (_, eq, id) => ph(links, `${eq ? '(' : ''}<a class="ref" href="#${esc(id)}" data-ref="${esc(id)}">${esc(id)}</a>${eq ? ')' : ''}`));
 
   // 2. Wiki links and directives
   s = s.replace(/^\s*\[\[!redirects [^\]]*\]\]\s*$/gm, '');
@@ -198,7 +258,8 @@ export function renderSource(src, { context = false } = {}) {
 // After environments are numbered: show "3" instead of the label in \ref links
 export function resolveRefs(root) {
   root.querySelectorAll('a.ref[data-ref]').forEach((a) => {
-    const t = root.querySelector(`[id="${CSS.escape(a.dataset.ref)}"]`);
+    let t = root.querySelector(`[id="${CSS.escape(a.dataset.ref)}"]`);
+    t = t?.closest('[class*="num_"]') || t;
     const no = t?.querySelector(':scope > h6')?.textContent.match(/\d+/)?.[0];
     a.textContent = no || '↑';
   });

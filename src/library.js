@@ -4,7 +4,7 @@
 import { icons } from './main.js';
 import './library.css';
 import 'katex/dist/katex.min.css';
-import { esc, pageUrl } from './nlab.js';
+import { esc, pageUrl, displayTitle } from './nlab.js';
 import { fillPreview } from './preview.js';
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -35,7 +35,7 @@ const writeUrl = () => {
   if (state.q) p.set('q', state.q);
   if (state.sort !== 'linked') p.set('sort', state.sort);
   if (state.letter) p.set('letter', state.letter);
-  history.replaceState(null, '', `library.html${p.toString() ? `?${p}` : ''}`);
+  history.replaceState(null, '', `library/${p.toString() ? `?${p}` : ''}`);
 };
 
 let LIB;
@@ -104,7 +104,7 @@ function render() {
   const grid = $('#lib-grid');
   const items = list.slice(0, state.shown);
   grid.innerHTML = items.length ? items.map(card).join('') : `<div class="lib-empty"><p>No pages match these filters.</p>
-    ${state.q ? `<a class="tbtn primary" href="${esc(pageUrl(state.q))}&new"><i data-lucide="file-plus-2"></i><span>Write a page “${esc(state.q)}”</span></a>` : ''}</div>`;
+    ${state.q ? `<a class="tbtn primary" href="${esc(pageUrl(state.q, 'new'))}"><i data-lucide="file-plus-2"></i><span>Write a page “${esc(state.q)}”</span></a>` : ''}</div>`;
   $('#lib-more').hidden = list.length <= state.shown;
   $('#lib-more span').textContent = `Show more (${(list.length - state.shown).toLocaleString()} left)`;
   grid.classList.remove('swap-in'); void grid.offsetWidth; grid.classList.add('swap-in');
@@ -119,12 +119,12 @@ function card(p) {
   const linked = p.inbound ? `${p.kind === 'p' ? 'Cited on' : 'Linked from'} ${p.inbound.toLocaleString()} page${p.inbound === 1 ? '' : 's'}` : 'New or rarely linked';
   if (p.kind === 'p') {
     return `<a class="lib-card person" href="${esc(pageUrl(p.name))}" data-name="${esc(p.name)}">
-      <span class="av" style="--h:${hue(p.name)}">${esc(initials(p.name))}</span>
-      <span class="lc-body"><b>${esc(p.name)}</b><span class="lc-meta">${linked}</span>${p.fields.filter((x) => x >= 0).length ? `<span class="lc-fields">${p.fields.filter((x) => x >= 0).slice(0, 3).map((x) => `<span class="lc-tag">${esc(LIB.fields[x])}</span>`).join('')}</span>` : ''}<span class="lc-ex"><span class="ll-skel"></span><span class="ll-skel short"></span></span></span></a>`;
+      <span class="av" style="--h:${hue(p.name)}">${esc(initials(displayTitle(p.name, true)))}</span>
+      <span class="lc-body"><b>${esc(displayTitle(p.name, true))}</b><span class="lc-meta">${linked}</span>${p.fields.filter((x) => x >= 0).length ? `<span class="lc-fields">${p.fields.filter((x) => x >= 0).slice(0, 3).map((x) => `<span class="lc-tag">${esc(LIB.fields[x])}</span>`).join('')}</span>` : ''}<span class="lc-ex"><span class="ll-skel"></span><span class="ll-skel short"></span></span></span></a>`;
   }
   return `<a class="lib-card" href="${esc(pageUrl(p.name))}" data-name="${esc(p.name)}">
     ${tag ? `<span class="lc-tag k-${p.kind}">${esc(tag)}</span>` : ''}
-    <b>${esc(p.name)}</b>
+    <b>${esc(displayTitle(p.name))}</b>
     <span class="lc-ex"><span class="ll-skel"></span><span class="ll-skel"></span><span class="ll-skel short"></span></span>
     <span class="lc-meta"><i data-lucide="network"></i>${linked}</span></a>`;
 }

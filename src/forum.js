@@ -11,7 +11,7 @@ const $ = (s, r = document) => r.querySelector(s);
 const main = $('#f-main');
 const params = () => new URLSearchParams(location.search);
 const go = (q, push = true) => {
-  const url = `forum.html${q ? `?${new URLSearchParams(q)}` : ''}`;
+  const url = `forum/${q ? `?${new URLSearchParams(q)}` : ''}`;
   if (push) history.pushState(null, '', url); else history.replaceState(null, '', url);
   route();
 };
@@ -78,8 +78,8 @@ async function renderChannels(activeId) {
   const snapCh = F.isLive() ? [] : CHANNELS;
   const count = (c) => (c.topics ? c.topics.length : '');
   $('#f-channels').innerHTML = `
-    <a href="forum.html" class="${activeId == null ? 'on' : ''}" data-ch="">${icon('inbox')}<span>All discussions</span></a>
-    ${CHANNELS.map((c) => `<a href="forum.html?c=${c.id}" data-ch="${c.id}" class="${activeId === c.id ? 'on' : ''}">
+    <a href="forum/" class="${activeId == null ? 'on' : ''}" data-ch="">${icon('inbox')}<span>All discussions</span></a>
+    ${CHANNELS.map((c) => `<a href="forum/?c=${c.id}" data-ch="${c.id}" class="${activeId === c.id ? 'on' : ''}">
       ${icon(CH_ICON[c.name] || 'hash')}<span>${esc(c.name)}</span><em>${count(c)}</em></a>`).join('')}`;
   icons();
   return snapCh;
@@ -89,7 +89,7 @@ async function renderChannels(activeId) {
 function topicRow(t, chId, chName) {
   const people = (t.people || []).map((p) => avatar(p.name, 26)).join('');
   const isEdit = chName === 'Latest Changes';
-  return `<li><a class="topic" href="forum.html?c=${chId}&t=${encodeURIComponent(t.t)}">
+  return `<li><a class="topic" href="forum/?c=${chId}&t=${encodeURIComponent(t.t)}">
     <div class="t-main">
       <h3>${isEdit ? `<span class="t-tag">edit</span>` : ''}${esc(t.t)}</h3>
       <p>${esc(t.excerpt || '')}</p>
@@ -194,7 +194,7 @@ async function threadView(chId, topic) {
   }).join('');
   const isEdits = c?.name === 'Latest Changes';
   main.innerHTML = `
-    <nav class="f-back"><a href="forum.html?c=${chId}">${icon('arrow-left')}<span>${esc(c?.name || 'Back')}</span></a></nav>
+    <nav class="f-back"><a href="forum/?c=${chId}">${icon('arrow-left')}<span>${esc(c?.name || 'Back')}</span></a></nav>
     <header class="thread-head">
       <h2>${esc(topic)}</h2>
       <p>${msgs.length} message${msgs.length === 1 ? '' : 's'}${msgs.length ? ` · started ${rel(msgs[0].timestamp)}` : ''}</p>
@@ -235,7 +235,7 @@ async function route() {
 }
 
 document.addEventListener('click', (e) => {
-  const a = e.target.closest('a[href^="forum.html"]');
+  const a = e.target.closest('a[href^="forum/"]');
   if (a && !e.metaKey && !e.ctrlKey && !e.shiftKey) { e.preventDefault(); history.pushState(null, '', a.getAttribute('href')); route(); return; }
   const b = e.target.closest('[data-act]');
   if (!b) return;

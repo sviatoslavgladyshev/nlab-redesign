@@ -5,6 +5,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Cpath d=%22M16 3c5 6 5 14 0 26C11 17 11 9 16 3z%22 fill=%22%23193c78%22/%3E%3Cpath d=%22M4 12c7-1 13 3 12 17C9 25 4 19 4 12z%22 fill=%22%23226622%22/%3E%3Cpath d=%22M28 12c-7-1-13 3-12 17 7-4 12-10 12-17z%22 fill=%22%23a41e32%22/%3E%3C/svg%3E">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Forum — nLab</title>
+<script>(function(){var m=null;try{m=localStorage.getItem('nlab-mode')}catch(e){}if(m!=='dark'&&m!=='light')m=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.dataset.mode=m})();</script>
 <style>/* critical: no flash of unstyled content */.brand-mark{width:28px;height:28px}html:not(.ready) body{opacity:0}html.ready body{opacity:1;transition:opacity .2s ease}</style>
 <noscript><style>html body{opacity:1}</style></noscript>
 <script>setTimeout(function(){document.documentElement.classList.add('ready')},2500)</script>
@@ -23,17 +24,18 @@
       nLab <small>redesign</small>
     </a>
     <nav class="nav-links" aria-label="Main">
-      <a href="library.html"><i data-lucide="library"></i><span>Library</span></a>
-      <a href="page.html?recent"><i data-lucide="history"></i><span>Recent</span></a>
-      <a href="forum.html" aria-current="page"><i data-lucide="messages-square"></i><span>Forum</span></a>
-      <a href="cqts.html"><i data-lucide="orbit"></i><span>CQTS</span></a>
+      <a href="library/"><i data-lucide="library"></i><span>Library</span></a>
+      <a href="recent"><i data-lucide="history"></i><span>Recent</span></a>
+      <a href="forum/" aria-current="page"><i data-lucide="messages-square"></i><span>Forum</span></a>
+      <a href="cqts/"><img class="nav-cqts" src="brand/cqts-mark-96.png" alt="" width="18" height="18"><span>CQTS</span></a>
     </nav>
     <form class="nav-search" role="search">
       <i data-lucide="search"></i>
       <input type="search" placeholder="Search" aria-label="Search the nLab">
       <kbd>/</kbd>
     </form>
-    <a class="nav-write" href="page.html?write"><i data-lucide="pen-line"></i><span>Write</span></a>
+    <a class="nav-write" href="write"><i data-lucide="pen-line"></i><span>Write</span></a>
+    <button class="nav-mode" type="button" aria-label="Switch between light and dark" title="Light / dark"><i data-lucide="moon"></i></button>
     <div class="nav-account"></div>
   </div>
 </header>
@@ -69,10 +71,10 @@
         <a class="brand" href="./"><svg class="brand-mark" width="28" height="28" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3c5 6 5 14 0 26C11 17 11 9 16 3z" fill="#6b8fd6"/><path d="M4 12c7-1 13 3 12 17C9 25 4 19 4 12z" fill="#5fae5f"/><path d="M28 12c-7-1-13 3-12 17 7-4 12-10 12-17z" fill="#e0606f"/></svg>nLab</a>
         <p>The open wiki for mathematics, physics and philosophy. Read it, improve it.</p>
       </div>
-      <div><h6>Read</h6><a href="page.html?p=mathematics">Mathematics</a><a href="page.html?p=physics">Physics</a><a href="page.html?p=philosophy">Philosophy</a><a href="page.html?all">All pages</a></div>
-      <div><h6>Contribute</h6><a href="./#contribute">How to contribute</a><a href="page.html?p=HowTo">HowTo</a><a href="page.html?p=Sandbox&amp;edit">Sandbox</a></div>
-      <div><h6>Community</h6><a href="forum.html">Forum</a><a href="page.html?recent">Recent changes</a><a href="forum.html?new">Start a discussion</a></div>
-      <div><h6>CQTS</h6><a href="cqts.html">Overview</a><a href="cqts.html#Symposium2026">Symposium 2026</a><a href="cqts.html#colloquium">Colloquium</a></div>
+      <div><h6>Read</h6><a href="wiki/mathematics/">Mathematics</a><a href="wiki/physics/">Physics</a><a href="wiki/philosophy/">Philosophy</a><a href="all">All pages</a></div>
+      <div><h6>Contribute</h6><a href="./#contribute">How to contribute</a><a href="wiki/HowTo/">HowTo</a><a href="wiki/Sandbox/?edit">Sandbox</a></div>
+      <div><h6>Community</h6><a href="forum/">Forum</a><a href="recent">Recent changes</a><a href="forum/?new">Start a discussion</a></div>
+      <div><h6>CQTS</h6><a href="cqts/">Overview</a><a href="cqts/#Symposium2026">Symposium 2026</a><a href="cqts/#colloquium">Colloquium</a></div>
     </div>
     <div class="foot-base"><span id="foot-source">Content from the nLab (via its public content mirror) and the nForum.</span><span>Redesign prototype — not the official nLab.</span></div>
   </div>

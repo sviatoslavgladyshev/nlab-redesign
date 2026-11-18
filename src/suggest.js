@@ -62,9 +62,9 @@ export function attachSuggest(form, { edit = false } = {}) {
     const list = rank(await loadNames(), q);
     if (input.value.trim() !== q) return; // typed on meanwhile
     items = [
-      ...list.map((n) => ({ href: pageUrl(n) + (edit ? '&edit' : ''), html: `<span class="sg-ic">§</span><span>${mark(n, q)}</span>` })),
-      ...(edit ? [] : [{ href: `page.html?search=${encodeURIComponent(q)}`, html: `<span class="sg-ic">⌕</span><span>Search all pages for “${esc(q)}”</span>` }]),
-      ...(pageExists(q) ? [] : [{ href: `${pageUrl(q)}&new`, html: `<span class="sg-ic">+</span><span>Create a new page “${esc(q)}”</span>`, cls: 'sg-new' }]),
+      ...list.map((n) => ({ href: pageUrl(n, edit ? 'edit' : ''), html: `<span class="sg-ic">§</span><span>${mark(n, q)}</span>` })),
+      ...(edit ? [] : [{ href: `search?q=${encodeURIComponent(q)}`, html: `<span class="sg-ic">⌕</span><span>Search all pages for “${esc(q)}”</span>` }]),
+      ...(pageExists(q) ? [] : [{ href: `${pageUrl(q, 'new')}`, html: `<span class="sg-ic">+</span><span>Create a new page “${esc(q)}”</span>`, cls: 'sg-new' }]),
     ];
     box.innerHTML = items.map((it, i) => `<a role="option" id="${box.id}-${i}" href="${esc(it.href)}" aria-selected="false"${it.cls ? ` class="${it.cls}"` : ''}>${it.html}</a>`).join('');
     box.hidden = false;
@@ -84,7 +84,7 @@ export function attachSuggest(form, { edit = false } = {}) {
   // Enter with no selection: open an exact match directly, otherwise search
   form.addEventListener('submit', (e) => {
     const exact = pageExists(input.value);
-    if (exact) { e.stopImmediatePropagation(); e.preventDefault(); location.href = pageUrl(exact) + (edit ? '&edit' : ''); }
+    if (exact) { e.stopImmediatePropagation(); e.preventDefault(); location.href = pageUrl(exact, edit ? 'edit' : ''); }
   }, { capture: true });
   box.addEventListener('mousedown', (e) => e.preventDefault()); // keep focus while clicking
   input.addEventListener('blur', () => setTimeout(close, 120));

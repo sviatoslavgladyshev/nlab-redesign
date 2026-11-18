@@ -77,7 +77,7 @@ function inline(node) {
     else if (tag === 'A') {
       const href = n.getAttribute('href') || '';
       if (!href && n.id) { out += `{#${n.id}}`; continue; }
-      const wiki = n.dataset.wiki || (href.startsWith('page.html?p=') ? decodeName(href.slice(12).split('#')[0]) : null);
+      const wiki = n.dataset.wiki || (href.startsWith('wiki/') ? decodeName(href.slice(5).split(/[#?]/)[0].replace(/\/$/, '')) : null);
       if (wiki) out += inner.trim() === wiki ? `[[${wiki}]]` : `[[${wiki}|${inner.trim()}]]`;
       else out += `[${inner}](${href})`;
     } else if (tag === 'SUP' || tag === 'SUB') out += `<${tag.toLowerCase()}>${inner}</${tag.toLowerCase()}>`;

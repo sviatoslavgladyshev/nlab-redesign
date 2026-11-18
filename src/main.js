@@ -12,6 +12,7 @@ import {
   Upload, Copy, Check, Code, Info, RotateCcw, FileCode,
   LogIn, Inbox, Hash, Plus, Send, ArrowLeft, MessageSquarePlus, Undo2, Redo2, Type, ChevronDown, PanelRight, Keyboard,
   CircleHelp, Trash2, ListTree, Omega, TextQuote, Clock, Dices, FilePlus2, CircleCheck, CloudUpload,
+  Play, Moon, Sun, BookText, Menu,
 } from 'lucide';
 
 const ICONS = {
@@ -23,6 +24,7 @@ const ICONS = {
   Upload, Copy, Check, Code, Info, RotateCcw, FileCode,
   LogIn, Inbox, Hash, Plus, Send, ArrowLeft, MessageSquarePlus, Undo2, Redo2, Type, ChevronDown, PanelRight, Keyboard,
   CircleHelp, Trash2, ListTree, Omega, TextQuote, Clock, Dices, FilePlus2, CircleCheck, CloudUpload,
+  Play, Moon, Sun, BookText, Menu,
 };
 // Re-run after inserting markup that contains <i data-lucide="…">
 export const icons = () => createIcons({ icons: ICONS });
@@ -60,7 +62,7 @@ $$('form[role="search"]').forEach(attachSuggest);
 $$('form[role="search"]').forEach((f) => f.addEventListener('submit', (e) => {
   e.preventDefault();
   const q = f.querySelector('input').value.trim();
-  if (q) location.href = `page.html?search=${encodeURIComponent(q)}`;
+  if (q) location.href = `search?q=${encodeURIComponent(q)}`;
 }));
 addEventListener('keydown', (e) => {
   if ((e.key === '/' || (e.key === 'k' && (e.metaKey || e.ctrlKey))) && !/input|textarea/i.test(document.activeElement?.tagName)) {
@@ -193,7 +195,7 @@ function conceptDiagram(canvas) {
   canvas.addEventListener('click', () => {
     if (hover < 0) return;
     const page = nodes[hover].label.replace(/∞/g, 'infinity'); // nLab spells ∞ as "infinity" in page names
-    location.href = `page.html?p=${encodeURIComponent(page).replace(/%20/g, '+')}`;
+    location.href = `wiki/${encodeURIComponent(page).replace(/%20/g, '+')}`;
   });
   new IntersectionObserver(([e]) => {
     const was = running; running = e.isIntersecting;
@@ -242,12 +244,90 @@ $$('form.signup').forEach((f) => {
 
 /* Top bar: mark the current section */
 {
-  const here = location.pathname.split('/').pop() || 'index.html';
-  const recent = new URLSearchParams(location.search).has('recent');
+  const base = new URL(document.baseURI).pathname;
+  const here = location.pathname.startsWith(base) ? location.pathname.slice(base.length) : location.pathname;
   $$('.nav-links a').forEach((a) => {
-    const href = a.getAttribute('href');
-    if ((href === 'page.html?recent' && recent) || (href !== 'page.html?recent' && href === here)) a.setAttribute('aria-current', 'page');
+    const href = a.getAttribute('href').replace(/\/$/, '');
+    if (href && (here === href || here.startsWith(`${href}/`))) a.setAttribute('aria-current', 'page');
   });
+}
+
+/* In-page links (#section): with a <base> element they would otherwise resolve against the site root */
+document.addEventListener('click', (e) => {
+  const a = e.target.closest('a[href^="#"]');
+  if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey) return;
+  const id = decodeURIComponent(a.getAttribute('href').slice(1));
+  e.preventDefault();
+  const t = id ? document.getElementById(id) : null;
+  if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' }); else if (!id) scrollTo({ top: 0, behavior: 'smooth' });
+  history.pushState(null, '', `${location.pathname}${location.search}${id ? `#${encodeURIComponent(id)}` : ''}`);
+  dispatchEvent(new HashChangeEvent('hashchange'));
+});
+
+/* Light / dark mode (the initial mode is set before paint by a tiny script in each page's <head>) */
+{
+  const sync = () => {
+    const dark = document.documentElement.dataset.mode === 'dark';
+    document.querySelectorAll('.nav-mode').forEach((b) => {
+      b.innerHTML = `<i data-lucide="${dark ? 'sun' : 'moon'}"></i>`;
+      b.setAttribute('aria-pressed', String(dark));
+    });
+    icons();
+  };
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.nav-mode')) return;
+    const next = document.documentElement.dataset.mode === 'dark' ? 'light' : 'dark';
+    const apply = () => { document.documentElement.dataset.mode = next; sync(); dispatchEvent(new CustomEvent('modechange', { detail: next })); };
+    try { localStorage.setItem('nlab-mode', next); } catch { /* private mode */ }
+    if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) document.startViewTransition(apply); else apply();
+  });
+  sync();
+}
+
+/* ---------- Phones and small tablets: a menu button opens a panel with everything in the top bar ---------- */
+{
+  const wrap = document.querySelector('.nav .wrap');
+  if (wrap) {
+    const burger = document.createElement('button');
+    burger.type = 'button';
+    burger.className = 'nav-burger';
+    burger.setAttribute('aria-label', 'Menu');
+    burger.setAttribute('aria-expanded', 'false');
+    burger.innerHTML = '<i data-lucide="menu"></i>';
+    wrap.append(burger);
+    const sheet = document.createElement('div');
+    sheet.className = 'nav-sheet';
+    sheet.hidden = true;
+    const links = [...document.querySelectorAll('.nav-links a')].map((a) => a.outerHTML).join('');
+    sheet.innerHTML = `<div class="ns-panel" role="dialog" aria-label="Menu">
+        <div class="ns-head"><span>Menu</span><button type="button" class="ns-close" aria-label="Close menu"><i data-lucide="x"></i></button></div>
+        <form class="ns-search" role="search"><i data-lucide="search"></i><input type="search" placeholder="Search 20,000 pages" aria-label="Search the nLab"></form>
+        <nav class="ns-links">${links}</nav>
+        <div class="ns-actions">
+          <a class="tbtn primary" href="write"><i data-lucide="pen-line"></i><span>Write an article</span></a>
+          <button type="button" class="tbtn" data-acct="in"><i data-lucide="log-in"></i><span>Sign in</span></button>
+          <button type="button" class="tbtn" data-acct="up"><i data-lucide="users"></i><span>Create account</span></button>
+          <button type="button" class="tbtn nav-mode-text"><i data-lucide="moon"></i><span>Light / dark</span></button>
+        </div>
+      </div>`;
+    document.body.append(sheet);
+    const form = sheet.querySelector('form');
+    attachSuggest(form);
+    form.addEventListener('submit', (e) => { e.preventDefault(); const q = form.querySelector('input').value.trim(); if (q) location.href = `search?q=${encodeURIComponent(q)}`; });
+    const open = (on) => {
+      sheet.hidden = !on;
+      burger.setAttribute('aria-expanded', String(on));
+      document.body.classList.toggle('sheet-open', on);
+      if (on) setTimeout(() => sheet.classList.add('in')); else sheet.classList.remove('in');
+    };
+    burger.addEventListener('click', () => open(true));
+    sheet.addEventListener('click', (e) => {
+      if (e.target === sheet || e.target.closest('.ns-close') || e.target.closest('a, [data-acct]')) open(false);
+      if (e.target.closest('.nav-mode-text')) document.querySelector('.nav-mode')?.click();
+    });
+    addEventListener('keydown', (e) => { if (e.key === 'Escape' && !sheet.hidden) open(false); });
+    icons();
+  }
 }
 
 /* Styles are in place: show the page (see the inline style in each page's <head>) */
