@@ -1,22 +1,26 @@
 // nLab redesign — shared behaviour (icons, reveal, nav, search, hero diagram)
 import './style.css';
 import './themes.css';
-import './theme.js';
 import {
   createIcons, Search, ArrowRight, ArrowUpRight, Sigma, Atom, Lightbulb, BookOpen, BookMarked, PenLine, Quote,
   MessagesSquare, Sparkles, Shuffle, History, Server, Palette, Radio, Calendar, FileText, Presentation,
   ExternalLink, Microscope, Users, Newspaper, Orbit, Network, CodeXml, Library, ScrollText, ChevronRight,
   ChevronLeft, Globe, Telescope, Infinity as InfinityIcon,
+  Pencil, Bold, Italic, Link, Heading2, List, ListOrdered, Radical, SquareFunction, Save, X, Eye, GitCompare,
+  Upload, Copy, Check, Code, Info, RotateCcw, FileCode,
 } from 'lucide';
 
-createIcons({
-  icons: {
-    Search, ArrowRight, ArrowUpRight, Sigma, Atom, Lightbulb, BookOpen, BookMarked, PenLine, Quote, MessagesSquare,
-    Sparkles, Shuffle, History, Server, Palette, Radio, Calendar, FileText, Presentation, ExternalLink, Microscope,
-    Users, Newspaper, Orbit, Network, CodeXml, Library, ScrollText, ChevronRight, ChevronLeft, Globe, Telescope,
-    Infinity: InfinityIcon,
-  },
-});
+const ICONS = {
+  Search, ArrowRight, ArrowUpRight, Sigma, Atom, Lightbulb, BookOpen, BookMarked, PenLine, Quote, MessagesSquare,
+  Sparkles, Shuffle, History, Server, Palette, Radio, Calendar, FileText, Presentation, ExternalLink, Microscope,
+  Users, Newspaper, Orbit, Network, CodeXml, Library, ScrollText, ChevronRight, ChevronLeft, Globe, Telescope,
+  Infinity: InfinityIcon,
+  Pencil, Bold, Italic, Link, Heading2, List, ListOrdered, Radical, SquareFunction, Save, X, Eye, GitCompare,
+  Upload, Copy, Check, Code, Info, RotateCcw, FileCode,
+};
+// Re-run after inserting markup that contains <i data-lucide="…">
+export const icons = () => createIcons({ icons: ICONS });
+icons();
 
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
@@ -44,47 +48,6 @@ const onScroll = () => {
 };
 addEventListener('scroll', onScroll, { passive: true });
 onScroll();
-
-/* ---------- Parallax ----------
-   • [data-parallax="k"]  moves by k × (distance of its host from the viewport centre)
-   • [data-depth="d"]     additionally follows the pointer (hero glyphs)
-   • framed images        drift inside their frames
-   Uses the individual `translate` property so it composes with reveal/hover transforms. */
-if (!reduce) {
-  const movers = $$('[data-parallax]').map((el) => ({
-    el, k: parseFloat(el.dataset.parallax), d: parseFloat(el.dataset.depth || 0),
-    host: el.closest('[data-parallax-host]') || el.parentElement,
-  }));
-  $$('.sec-no').forEach((el) => movers.push({ el, k: -0.1, d: 0, host: el.parentElement }));
-  const frames = $$('.feat figure, .plate-card .ph, .spot-img, .pillar .pic, .talk-img, .news .news-img')
-    .map((f) => ({ f, img: f.querySelector('img, svg') })).filter((x) => x.img);
-  frames.forEach(({ img }) => img.classList.add('px-img'));
-
-  let px = 0, py = 0, tx = 0, ty = 0, queued = false;
-  const frame = () => {
-    queued = false;
-    const vh = innerHeight;
-    px += (tx - px) * 0.08; py += (ty - py) * 0.08;
-    movers.forEach(({ el, k, d, host }) => {
-      const r = host.getBoundingClientRect();
-      if (r.bottom < -300 || r.top > vh + 300) return;
-      const y = (r.top + r.height / 2 - vh / 2) * k;
-      el.style.translate = `${(px * d).toFixed(1)}px ${(y + py * d).toFixed(1)}px`;
-    });
-    frames.forEach(({ f, img }) => {
-      const r = f.getBoundingClientRect();
-      if (r.bottom < 0 || r.top > vh) return;
-      const t = (r.top + r.height / 2 - vh / 2) / vh; // −0.5 … 0.5 while visible
-      img.style.translate = `0 ${(t * -14).toFixed(2)}%`;
-    });
-    if (Math.abs(tx - px) > 0.1 || Math.abs(ty - py) > 0.1) schedule();
-  };
-  const schedule = () => { if (!queued) { queued = true; requestAnimationFrame(frame); } };
-  addEventListener('scroll', schedule, { passive: true });
-  addEventListener('resize', schedule);
-  addEventListener('pointermove', (e) => { tx = (e.clientX / innerWidth - 0.5) * 2; ty = (e.clientY / innerHeight - 0.5) * 2; schedule(); }, { passive: true });
-  schedule();
-}
 
 /* ---------- Search (any search form on the page) ---------- */
 $$('form[role="search"]').forEach((f) => f.addEventListener('submit', (e) => {

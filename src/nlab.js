@@ -18,7 +18,7 @@ export class NotInSnapshot extends Error {
 
 // Map any nLab URL to its in-site equivalent; everything else becomes absolute.
 export function rewriteHref(href) {
-  if (!href || href.startsWith('#')) return href;
+  if (!href || href.startsWith('#') || /^(page|cqts)\.html|^\.\//.test(href)) return href; // already in-site
   let u;
   try { u = new URL(href, `${ORIGIN}/nlab/show/`); } catch { return href; }
   if (u.protocol === 'javascript:') return '#';
@@ -91,4 +91,20 @@ export async function latestChanges(limit = 8) {
       const rev = (li.querySelector('.views')?.textContent.match(/rev\s*#\s*(\d+)/) || [])[1];
       return { title: a?.textContent.trim(), href: rewriteHref(a?.getAttribute('href')), author, date: when[1] || '', time: when[2] || '', rev };
     });
+}
+
+// Raw nLab source (Markdown+itex) of a page — from /nlab/source in dev, from the snapshot in the static build.
+export async function fetchSource(name) {
+  if (LIVE) {
+    const res = await fetch(`${API}/nlab/source/${encodeName(name)}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const ta = parse(await res.text()).querySelector('textarea#content, textarea');
+    if (!ta) throw new Error('No source on this page');
+    return ta.value.replace(/^\n/, '');
+  }
+  const entry = (await loadIndex()).pages?.[name] || (await loadIndex()).pages?.[name.toLowerCase()];
+  if (!entry?.source) throw new Error('The source of this page is not in this snapshot');
+  const res = await fetch(`snapshot/${entry.source}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.text();
 }

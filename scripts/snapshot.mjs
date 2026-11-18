@@ -16,6 +16,9 @@ const DELAY_MS = 400;
 
 const decodeName = (s) => decodeURIComponent(s.replace(/\+/g, ' '));
 const encodeName = (n) => encodeURIComponent(n).replace(/%20/g, '+');
+const decodeEntities = (s) => s.replace(/&(#x[\da-f]+|#\d+|lt|gt|amp|quot|apos|#39);/gi, (_, e) => (
+  e[0] === '#' ? String.fromCodePoint(e[1].toLowerCase() === 'x' ? parseInt(e.slice(2), 16) : +e.slice(1))
+    : { lt: '<', gt: '>', amp: '&', quot: '"', apos: "'" }[e.toLowerCase()]));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const fileFor = (name) => {
   const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'page';
@@ -61,11 +64,20 @@ for (const name of [...names].sort()) {
   const m = new URL(res.url).pathname.match(/^\/nlab\/show\/(.+)$/);
   const canonical = m ? decodeName(m[1]) : name;
   const file = fileFor(canonical);
-  if (!pages[canonical]) {
+  let entry = pages[canonical];
+  if (!entry) {
     await writeFile(new URL(file, OUT), trim(await res.text()));
     ok++;
+    entry = { file, canonical };
+    // Page source, for the editor
+    const src = await get(`${ORIGIN}/nlab/source/${encodeName(canonical)}`);
+    await sleep(DELAY_MS);
+    const ta = src && (await src.text()).match(/<textarea[^>]*id=.content.[^>]*>([\s\S]*?)<\/textarea>/);
+    if (ta) {
+      entry.source = file.replace(/\.html$/, '.md');
+      await writeFile(new URL(entry.source, OUT), decodeEntities(ta[1]).replace(/^\n/, ''));
+    }
   }
-  const entry = { file, canonical };
   for (const key of [name, canonical]) { pages[key] = entry; pages[key.toLowerCase()] = entry; }
   console.log(`  ok    ${name}${canonical !== name ? ` → ${canonical}` : ''}`);
 }
