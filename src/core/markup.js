@@ -8,8 +8,46 @@ import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import { pageUrl, esc } from './nlab.js';
 import { hashSource, TIKZ_RE } from './hash.js';
+import { referenceAuthors, referenceLink, referenceTitle, withoutBibliography } from './bibliography.js';
 
 const md = new MarkdownIt({ html: true, linkify: false, typographer: false });
+md.inline.ruler.before('escape', 'bibliography_cite', (state, silent) => {
+  if (!state.env.citations && !state.env.editableCitations) return false;
+  if (!state.src.startsWith('\\cite{', state.pos)) return false;
+  const match = state.src.slice(state.pos).match(/^\\cite\{([^{}\n]+)\}/);
+  if (!match) return false;
+  const keys = match[1].split(',').map((key) => key.trim()).filter(Boolean);
+  if (!keys.length) return false;
+  if (!silent) state.push('bibliography_cite', '', 0).meta = keys;
+  state.pos += match[0].length;
+  return true;
+});
+md.renderer.rules.bibliography_cite = (tokens, index, _options, { citations, editableCitations }) => {
+  const keys = tokens[index].meta;
+  if (editableCitations) return citationChip(keys);
+  return '[' + keys.map((key) => {
+    const number = citations.get(key);
+    return number ? '<a class="bib-cite" href="#nlab-bib-' + number + '">' + number + '</a>' : esc(key);
+  }).join(', ') + ']';
+};
+
+export function citationChip(keys) {
+  return '<span class="bib-cite-chip" contenteditable="false" data-citation="' + esc(keys.join(',')) + '">[' + esc(keys.join(', ')) + ']</span>';
+}
+
+function renderBibliography(entries) {
+  const items = entries.map((entry, index) => {
+    const { fields } = entry;
+    const publication = fields.journaltitle || fields.journal || fields.booktitle || fields.publisher || fields.institution;
+    const detail = [referenceAuthors(entry), publication, fields.year || fields.date, fields.pages && 'pp. ' + fields.pages]
+      .filter(Boolean).map(esc).join(' · ');
+    const title = esc(referenceTitle(entry));
+    const link = referenceLink(entry);
+    return '<li id="nlab-bib-' + (index + 1) + '">' + (link ? '<a href="' + esc(link) + '">' + title + '</a>' : title)
+      + (detail ? '<span class="bib-details">' + detail + '</span>' : '') + '</li>';
+  }).join('');
+  return '<h2 id="nlab-bibliography">Bibliography</h2><ol class="bib-references">' + items + '</ol>';
+}
 
 // Placeholders survive Markdown untouched (private-use code points).
 // Each store gets its own marker letter so math and link placeholders cannot collide.
@@ -167,10 +205,39 @@ export function contextSource(src) {
  * Inline math keeps its TeX in data-tex, wiki links their target in data-wiki,
  * so the visual editor can turn the HTML back into source.
  */
-export function renderSource(src, { context = false } = {}) {
+// The PDF title page, set in the source the LaTeX way: \title{…}, \author{…}, \date{…} (each on its own line).
+// They only shape the PDF; the page itself never shows them.
+const TITLE_LINE = /^[ \t]*\\(title|author|date)\{((?:[^{}]|\{[^{}]*\})*)\}[ \t]*$/gm;
+export function titleFields(src) {
+  const out = {};
+  for (const [, field, value] of String(src).matchAll(TITLE_LINE)) if (!(field in out)) out[field] = value.trim();
+  return out;
+}
+// A page may be written as a whole LaTeX document:
+//   \documentclass{article} \usepackage… \title… \begin{document} \maketitle  …page…  \end{document}
+// The preamble and the wrapper only shape the PDF; the page shows the body.
+const DOC_START = /^[\s\S]*?\\begin\{document\}[ \t]*\n?/;
+export const hasLatexDocument = (src) => /\\documentclass/.test(src) && /\\begin\{document\}/.test(src);
+export function latexDocument(src) {
+  const text = String(src);
+  if (!hasLatexDocument(text)) return { preamble: '', body: text, end: '' };
+  const start = text.match(DOC_START)[0];
+  const rest = text.slice(start.length);
+  const endAt = rest.search(/^[ \t]*\\end\{document\}/m);
+  return { preamble: start, body: endAt < 0 ? rest : rest.slice(0, endAt), end: endAt < 0 ? '' : rest.slice(endAt) };
+}
+export function withLatexDocument(body, { title = '', author = '', date = '\\today' } = {}) {
+  return `\\documentclass{article}\n\\usepackage{amsmath, amssymb, amsthm}\n\n\\title{${title}}\n\\author{${author}}\n\\date{${date}}\n\n\\begin{document}\n\\maketitle\n\n${(String(body).replace(/^\n+/, '').replace(/\s*$/, '') + '\n\n').replace(/^\n\n$/, '\n')}\\end{document}\n`;
+}
+export const withoutTitleFields = (src) => latexDocument(src).body.replace(TITLE_LINE, '').replace(/^[ \t]*\\maketitle[ \t]*$/gm, '');
+// what goes to ncatlab.org: the page without the LaTeX document wrapper or title lines
+export const nlabSource = (src) => withoutTitleFields(src).replace(/^\n+/, '');
+
+export function renderSource(src, { context = false, bibliography, editableCitations = false } = {}) {
+  src = withoutTitleFields(src);
   const math = newStore('m');
   const links = newStore('l');
-  let s = latexEnvs(src.replace(/\r\n?/g, '\n'));
+  let s = latexEnvs(withoutBibliography(src).replace(/\r\n?/g, '\n'));
   s = diagrams(images(s, links), links);
   s = s.replace(/\\begin\{svg\}[\s\S]*?\\end\{svg\}/g, '');
 
@@ -245,7 +312,8 @@ export function renderSource(src, { context = false } = {}) {
   }
 
   // 4. Markdown, then restore placeholders and heading ids
-  let html = md.render(out.join('\n'));
+  const citations = bibliography && new Map(bibliography.map(({ key }, i) => [key, i + 1]));
+  let html = md.render(out.join('\n'), { citations, editableCitations });
   html = html.replace(new RegExp(`<p>\\s*(${A}[ml]\\d+${Z})\\s*</p>`, 'g'), '$1'); // display math / includes not wrapped in <p>
   html = html.replace(/<(h[1-6])>([\s\S]*?)<\/\1>/g, (_, h, inner) => {
     const m = inner.match(/\s*([\w-]+)\s*$/);
@@ -253,7 +321,7 @@ export function renderSource(src, { context = false } = {}) {
     return `<${h} id="${m ? m[1] : slug(text)}"${m ? ` data-anchor="${m[1]}"` : ''}>${text}</${h}>`;
   });
   html = unph(unph(html, links), math);
-  return html;
+  return bibliography?.length ? html + renderBibliography(bibliography) : html;
 }
 
 // After environments are numbered: show "3" instead of the label in \ref links

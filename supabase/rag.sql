@@ -58,16 +58,23 @@ $$;
 create or replace function public.related_pages(p_name text, p_limit integer default 8)
 returns table (name text, kind text, summary text, inbound integer, similarity real)
 language sql stable set search_path = public, extensions as $$
+  -- nearest neighbours through the HNSW index first (fast), then the filters
   with me as (
     select id, embedding, kind from pages
     where id = (select id from pages where lower(name) = lower(btrim(p_name))
                 union all select page_id from page_aliases where alias = lower(btrim(p_name)) limit 1)
+  ),
+  near as (
+    select p.id, p.embedding <=> me.embedding as d
+    from pages p, me
+    where me.embedding is not null and p.embedding is not null
+    order by p.embedding <=> (select embedding from me)
+    limit 80
   )
-  select p.name, p.kind, p.summary, p.inbound, (1 - (p.embedding <=> me.embedding))::real
-  from pages p, me
-  where me.embedding is not null and p.embedding is not null and p.id <> me.id
-    and p.kind <> 's' and p.name !~ ' > ' and (p.kind <> 'p' or me.kind = 'p')  -- people only next to people
-  order by p.embedding <=> me.embedding
+  select p.name, p.kind, p.summary, p.inbound, (1 - n.d)::real
+  from near n join pages p on p.id = n.id, me
+  where p.id <> me.id and p.kind <> 's' and p.name !~ ' > ' and (p.kind <> 'p' or me.kind = 'p')  -- people only next to people
+  order by n.d
   limit least(greatest(p_limit, 1), 30);
 $$;
 

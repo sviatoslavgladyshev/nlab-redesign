@@ -4,15 +4,18 @@ const COLUMNS = 'display_name, affiliation, bio, theme, focus_read';
 const cacheKey = (id) => `nlab-profile-v1:${id}`;
 const pending = new Map();
 
+// The signed-in user's own profile is kept on this device, so the profile shows instantly in every tab;
+// it is refreshed from the database in the background.
 function readCache(id) {
-  try { return JSON.parse(sessionStorage.getItem(cacheKey(id))); }
+  try { return JSON.parse(localStorage.getItem(cacheKey(id)) || sessionStorage.getItem(cacheKey(id))); }
   catch { return null; }
 }
 
 function writeCache(id, profile) {
-  try { sessionStorage.setItem(cacheKey(id), JSON.stringify({ profile, time: Date.now() })); }
+  try { localStorage.setItem(cacheKey(id), JSON.stringify({ profile, time: Date.now() })); }
   catch { /* Storage may be unavailable. */ }
 }
+export const forgetProfileCache = (id) => { try { localStorage.removeItem(cacheKey(id)); sessionStorage.removeItem(cacheKey(id)); } catch { /* ignore */ } };
 
 export const cachedProfile = (user = currentUser()) => user ? readCache(user.id)?.profile : null;
 
@@ -89,3 +92,9 @@ export function applyProfilePreferences(profile, userId, force = false) {
     dispatchEvent(new CustomEvent('reading-preference-change', { detail: profile.focus_read }));
   }
 }
+
+// signing out leaves no copy of the profile on this device
+addEventListener('account-change', () => {
+  if (currentUser()) return;
+  try { Object.keys(localStorage).filter((k) => k.startsWith('nlab-profile-v1:') || k.startsWith('nlab-publications:')).forEach((k) => localStorage.removeItem(k)); } catch { /* ignore */ }
+});

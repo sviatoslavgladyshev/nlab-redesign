@@ -4,9 +4,11 @@
 // Drafts save automatically in this browser; "Publish" walks through sending them to the nLab.
 import { icons } from '../../ui/app.js';
 import { esc, clean, ORIGIN, encodeName } from '../../core/nlab.js';
-import { renderSource, diffLines, resolveRefs } from '../../core/markup.js';
+import { renderSource, diffLines, resolveRefs, titleFields, hasLatexDocument, withLatexDocument, nlabSource } from '../../core/markup.js';
 import { createSourceEditor, setDoc, FORMAT, envSource, ENVS } from '../../ui/codemirror.js';
 import { VisualDoc } from './visual.js';
+import { openBibliography } from './bibliography.js';
+import { bibliographyBlock, bibliographySource, bibliographyText, citationSource, parseBibliography, withoutBibliography } from '../../core/bibliography.js';
 import { loadNames } from '../../ui/suggest.js';
 import { toast } from '../wiki/shell.js';
 import katex from 'katex';
@@ -15,8 +17,8 @@ const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 
 import { drafts } from '../../core/drafts.js';
-import { dbEnabled, currentUser, savePage, suggestEdit } from '../../core/db.js';
-import { forgetPage } from '../../core/nlab.js';
+import { dbEnabled, currentUser, displayName, savePage, suggestEdit } from '../../core/db.js';
+import { forgetPage, pageUrl, findExistingTitle } from '../../core/nlab.js';
 import { openAccount } from '../../ui/account.js';
 import { busy } from '../../ui/app.js';
 export { drafts };
@@ -43,7 +45,21 @@ const ALIGN_MENU = [['left', 'Align left', '', 'align-left'], ['center', 'Center
   ['right', 'Align right', '', 'align-right'], ['justify', 'Justify', '', 'align-justify']];
 const BREAK_MENU = [['line-break', 'Line break', 'Continue within the paragraph', 'corner-down-left'],
   ['page-break', 'Page break', 'Start a new page in the PDF preview', 'file-plus-2']];
-const TOOL_MENUS = { block: BLOCKS, env: ENV_MENU, align: ALIGN_MENU, break: BREAK_MENU };
+const ZOOM_MENU = [['width', 'Fit width', 'The page fills the width', 'move-horizontal'], ['page', 'Fit page', 'See the whole page', 'scan'],
+  ['.5', '50%', '', 'zoom-out'], ['.75', '75%', '', 'zoom-out'], ['1', '100%', 'Actual size', 'square'], ['1.25', '125%', '', 'zoom-in'],
+  ['1.5', '150%', '', 'zoom-in'], ['2', '200%', '', 'zoom-in']];
+const INSERT_MENU = [['table', 'Table', 'A grid you type into, cell by cell', 'table'],
+  ['square', 'Commutative square', 'Four objects and four arrows', 'square'], ['triangle', 'Commutative triangle', 'Three objects and three arrows', 'triangle'],
+  ['arrows', 'Chain of arrows', 'A → B → C', 'move-right'], ['image', 'Image', 'From a web address', 'image'], ['rule', 'Divider', 'A horizontal line', 'minus']];
+// what each Insert item puts in the page (nLab Markdown + LaTeX; diagrams are drawn live by KaTeX)
+const INSERTS = {
+  table: () => '| Column 1 | Column 2 | Column 3 |\n|---|---|---|\n|  |  |  |\n|  |  |  |',
+  square: () => '$$\n\\begin{CD}\nA @>{f}>> B \\\\\n@V{g}VV @VV{h}V \\\\\nC @>>{k}> D\n\\end{CD}\n$$',
+  triangle: () => '$$\n\\begin{array}{ccc}\nA & \\xrightarrow{f} & B \\\\\n & {}_{h}\\searrow & \\downarrow{\\scriptstyle g} \\\\\n & & C\n\\end{array}\n$$',
+  arrows: () => '$$\nA \\xrightarrow{f} B \\xrightarrow{g} C\n$$',
+  rule: () => '***',
+};
+const TOOL_MENUS = { block: BLOCKS, env: ENV_MENU, align: ALIGN_MENU, break: BREAK_MENU, zoom: ZOOM_MENU, insert: INSERT_MENU };
 
 let ws; // the single workspace instance
 
@@ -64,6 +80,7 @@ class Workspace {
     this.el.classList.toggle('ws-suggestion', suggestion);
     $('#ws-name').textContent = name;
     $('#ws-new').hidden = !isNew;
+    this.setupTitle();
     $('[data-ws="publish"] span').textContent = suggestion ? 'Prepare suggestion' : 'Publish';
     this.mode = localStorage.getItem(MODE_KEY) === 'latex' ? 'latex' : 'visual';
     this.ac = new AbortController();
@@ -77,6 +94,7 @@ class Workspace {
     });
     // LaTeX
     $('#ws-cm').replaceChildren();
+    $('#ws-prev').replaceChildren();
     this.cm = createSourceEditor({ parent: $('#ws-cm'), doc: start, placeholder: 'Start writing…', onChange: (src) => this.update(src, 'latex'), onSave: () => this.saveNow(true) });
     on($('#ws-cm'), 'scroll', () => this.syncScroll(), { capture: true, passive: true });
 
@@ -90,8 +108,10 @@ class Workspace {
       const a = b.dataset.ws;
       if (a === 'mode') this.setMode(b.dataset.mode);
       else if (a === 'close') this.close();
+      else if (a === 'titlepage') this.titlePage();
       else if (a === 'changes') this.toggleDrawer();
       else if (a === 'publish') this.openPublish();
+      else if (a === 'bibliography') this.bibliographyDialog();
       else if (a === 'discard') this.discard();
       else if (a === 'pdf') this.printPdf();
       else if (a === 'help') $('#ws-help').hidden = !$('#ws-help').hidden;
@@ -107,11 +127,17 @@ class Workspace {
     on(window, 'beforeunload', () => this.saveNow());
     const zoom = $('#ws-zoom');
     const savedZoom = localStorage.getItem(ZOOM_KEY);
+    if (savedZoom && !Number.isNaN(Number(savedZoom)) && ![...zoom.options].some((option) => option.value === savedZoom)) {
+      const custom = document.createElement('option'); custom.dataset.custom = ''; custom.value = savedZoom; custom.textContent = `${Math.round(Number(savedZoom) * 100)}%`; zoom.append(custom);
+    }
     zoom.value = [...zoom.options].some((option) => option.value === savedZoom) ? savedZoom : 'width';
+    $('#ws-zoom-label').textContent = zoom.selectedOptions[0]?.textContent.trim() || 'Fit width';
     on(zoom, 'change', () => {
       localStorage.setItem(ZOOM_KEY, zoom.value);
       this.fitPages();
     });
+    on($('#ws-visual'), 'wheel', (e) => this.pinchZoom(e), { passive: false });
+    on($('#ws-prev'), 'wheel', (e) => this.pinchZoom(e), { passive: false });
     this.resizeObserver = new ResizeObserver(() => this.fitPages());
     this.resizeObserver.observe($('#ws-visual'));
     this.resizeObserver.observe($('#ws-prev'));
@@ -161,7 +187,8 @@ class Workspace {
       }
       visualView.scrollTo(...(this.modeScroll.visual || [0, 0]));
     } else {
-      if (this.cm.state.doc.toString() !== this.source) setDoc(this.cm, this.source);
+      if (this.isNew && !this.suggestion && !hasLatexDocument(this.source)) this.source = this.documentFor(this.source);
+      if (this.cm.state.doc.toString() !== this.source) { setDoc(this.cm, this.source); this.update(this.source); }
       this.renderPreview();
       requestAnimationFrame(() => {
         if (this.mode !== 'latex' || this.ac.signal.aborted) return;
@@ -183,12 +210,33 @@ class Workspace {
   }
 
   // LaTeX mode: the preview is typeset as A4 pages, like the compiled PDF
-  renderPreview() {
+  async renderPreview() {
     if (this.mode !== 'latex' || this.previewSource === this.source) return;
+    const source = this.source;
+    const bib = bibliographyText(source);
+    const bibliography = bib ? (await parseBibliography(bib).catch(() => ({ entries: [] }))).entries : undefined;
+    if (this.mode !== 'latex' || this.source !== source || this.previewSource === source || this.ac.signal.aborted) return;
     const prev = $('#ws-prev');
     const flow = document.createElement('div');
-    const date = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
-    flow.innerHTML = `<div class="pdf-title"><h1>${esc(this.name)}</h1><p>nLab</p><p>${date}</p></div>${renderSource(this.source)}`;
+    // title page: \title, \author and \date from the source, or the page name, your name and today
+    const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    const fields = titleFields(source);
+    const tex = (t) => esc(t).replace(/\\today/g, today).replace(/\\\\/g, '<br>').replace(/\\and\b/g, '<span class="pdf-and">and</span>')
+      .replace(/\\(textbf|emph|textit)\{([^{}]*)\}/g, (_, c, x) => (c === 'textbf' ? `<b>${x}</b>` : `<i>${x}</i>`)).replace(/[{}]/g, '');
+    const title = fields.title ?? this.name;
+    const author = fields.author ?? (displayName(currentUser()) || 'nLab');
+    const date = fields.date ?? '\\today';
+    flow.innerHTML = `<div class="pdf-title" data-ws="titlepage" title="Edit the title, author and date">${title ? `<h1>${tex(title)}</h1>` : ''}${author ? `<p>${tex(author)}</p>` : ''}${date ? `<p>${tex(date)}</p>` : ''}</div>${renderSource(source, { bibliography })}`;
+    const references = flow.querySelector('.bib-references');
+    if (references) {
+      references.replaceWith(...Array.from(references.children, (item, index) => {
+        const entry = document.createElement('p');
+        entry.className = 'bib-reference';
+        entry.id = item.id;
+        entry.append((index + 1) + '. ', ...item.childNodes);
+        return entry;
+      }));
+    }
     clean(flow);
     let n = 0, s2 = 0, s3 = 0;
     flow.querySelectorAll('[class*="num_"] > h6').forEach((x) => { n += 1; if (!/\d/.test(x.textContent)) x.textContent += ` ${n}`; });
@@ -226,7 +274,8 @@ class Workspace {
     $('#pdf-count').textContent = `${count} page${count === 1 ? '' : 's'}`;
     this.fitPages();
     prev.scrollTop = keep;
-    this.previewSource = this.source;
+    this.previewSource = source;
+    if (bib) this.renderOutline();
   }
   fitPages() {
     const view = this.mode === 'visual' ? $('#ws-visual') : $('#ws-prev');
@@ -241,8 +290,9 @@ class Workspace {
       : Number(value);
     view.style.setProperty('--paper-zoom', String(Math.max(.05, scale)));
   }
-  printPdf() {
+  async printPdf() {
     if (this.mode !== 'latex') this.setMode('latex');
+    await this.renderPreview();
     requestAnimationFrame(() => { document.title = this.name; window.print(); });
   }
   syncScroll() {
@@ -263,8 +313,9 @@ class Workspace {
   }
 
   renderStats() {
-    const words = this.source.replace(/\$\$[\s\S]*?\$\$|\$[^$\n]*\$|\+--.*|=--|\[\[!.*?\]\]|[#*_>`]/g, ' ').split(/\s+/).filter(Boolean).length;
-    const formulas = (this.source.match(/\$\$[\s\S]*?\$\$|\$[^$\n]+\$/g) || []).length;
+    const source = withoutBibliography(this.source);
+    const words = source.replace(/\$\$[\s\S]*?\$\$|\$[^$\n]*\$|\+--.*|=--|\[\[!.*?\]\]|[#*_>`]/g, ' ').split(/\s+/).filter(Boolean).length;
+    const formulas = (source.match(/\$\$[\s\S]*?\$\$|\$[^$\n]+\$/g) || []).length;
     $('#ws-words').textContent = `${words.toLocaleString()} words · ${formulas.toLocaleString()} formulas`;
     const { added, removed } = diffLines(this.original, this.source);
     $('#ws-count').textContent = added || removed ? `+${added} −${removed}` : '';
@@ -349,6 +400,51 @@ class Workspace {
   }
 
   /* ----- commands ----- */
+  bibliographyDialog() {
+    const visual = this.mode === 'visual';
+    const source = () => visual ? this.visual.getSource() : this.cm.state.doc.toString();
+    const selection = getSelection();
+    const range = visual && selection.rangeCount ? selection.getRangeAt(0).cloneRange() : null;
+    openBibliography({
+      text: bibliographyText(source()),
+      signal: this.ac.signal,
+      onChange: (text) => {
+        const current = source();
+        const old = bibliographyBlock(current);
+        const block = text ? bibliographySource(text) : '';
+        const from = old ? current.indexOf(old) : current.length;
+        const insert = block && !old && current.trim() ? '\n\n' + block : block;
+        const updated = current.slice(0, from) + insert + current.slice(from + old.length);
+        if (text && updated.length > 1_000_000 && [...updated].length > 1_000_000) {
+          throw new Error('This bibliography would make the draft too large to save.');
+        }
+        if (visual) {
+          this.visual.bibliography = block;
+          this.update(this.visual.getSource(), 'visual');
+        } else {
+          this.cm.dispatch({ changes: { from, to: from + old.length, insert } });
+        }
+        this.saveNow();
+      },
+      onCite: (key) => {
+        if (!visual) {
+          this.cm.dispatch(this.cm.state.replaceSelection(citationSource([key])));
+          this.cm.focus();
+          return;
+        }
+        const root = this.visual.root;
+        root.focus({ preventScroll: true });
+        if (range && root.contains(range.commonAncestorContainer) && !range.startContainer.parentElement?.closest('.v-island')) {
+          selection.removeAllRanges();
+          selection.addRange(range);
+        } else {
+          selection.collapse(root.lastElementChild, 0);
+        }
+        this.visual.exec('cite', key);
+      },
+    });
+  }
+
   command(cmd, btn, arg) {
     if (this.mode === 'latex') {
       const v = this.cm;
@@ -356,6 +452,11 @@ class Workspace {
       if (cmd === 'block') { FORMAT.heading(v); return; }
       if (cmd === 'symbols') { this.symbolPop(btn, (tex) => { v.dispatch(v.state.replaceSelection(tex)); v.focus(); }); return; }
       if (cmd === 'env') { const [cls, label] = arg.split('|'); FORMAT.env(v, cls, label); return; }
+      if (cmd === 'insert') {
+        const src = this.insertSource(arg);
+        if (src) { const at = v.state.selection.main.from; const pre = at && v.state.doc.sliceString(at - 1, at) !== '\n' ? '\n\n' : ''; v.dispatch(v.state.replaceSelection(`${pre}${src}\n\n`)); v.focus(); }
+        return;
+      }
       FORMAT[cmd]?.(v);
       return;
     }
@@ -366,10 +467,147 @@ class Workspace {
     else if (cmd === 'link') this.linkPrompt(btn);
     else if (cmd === 'symbols') this.symbolPop(btn, (tex) => d.insertMath(tex));
     else if (cmd === 'heading') d.exec('block', 'h2');
+    else if (cmd === 'insert') { const src = this.insertSource(arg); if (src) d.insertIsland(src); }
     else d.exec(cmd, arg);
   }
 
   // Styled dropdown menus (paragraph style, environments)
+  /* ----- the PDF title page: \title, \author, \date at the top of the source ----- */
+  documentFor(body) {
+    const fields = titleFields(body);
+    return withLatexDocument(body.replace(/^[ \t]*\\(title|author|date)\{.*\}[ \t]*\n?/gm, ''), {
+      title: fields.title ?? this.name, author: fields.author ?? (displayName(currentUser()) || ''), date: fields.date ?? '\\today' });
+  }
+
+  titlePage() {
+    if (this.mode !== 'latex') this.setMode('latex');
+    const v = this.cm;
+    let doc = v.state.doc.toString();
+    if (!hasLatexDocument(doc)) {
+      const next = this.documentFor(doc);
+      v.dispatch({ changes: { from: 0, to: doc.length, insert: next } });
+      doc = next;
+    }
+    const at = doc.search(/^[ \t]*\\title\{/m);
+    if (at >= 0) {
+      const open = doc.indexOf('{', at) + 1;
+      const close = doc.indexOf('}', open);
+      v.dispatch({ selection: { anchor: open, head: close }, scrollIntoView: true });
+    }
+    v.focus();
+  }
+
+  /* ----- the title: click to rename a new page, like a document title (published pages keep theirs) ----- */
+  setupTitle() {
+    const title = $('#ws-name');
+    const editable = this.isNew && !this.suggestion;
+    title.contentEditable = editable ? 'plaintext-only' : 'false';
+    title.classList.toggle('ws-name-edit', editable);
+    title.spellcheck = false;
+    title.setAttribute('role', editable ? 'textbox' : 'heading');
+    title.setAttribute('aria-label', editable ? 'Page title (click to rename)' : 'Page title');
+    title.title = editable ? 'Click to rename' : 'Published pages keep their title, so links to them keep working';
+    if (!editable || title.dataset.wired) return;
+    title.dataset.wired = '1';
+    title.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); title.blur(); }
+      else if (e.key === 'Escape') { title.textContent = this.name; title.blur(); }
+    });
+    title.addEventListener('focus', () => {
+      const r = document.createRange();
+      r.selectNodeContents(title);
+      getSelection().removeAllRanges();
+      getSelection().addRange(r);
+    });
+    title.addEventListener('blur', () => this.rename(title.textContent));
+  }
+
+  async rename(raw) {
+    const title = $('#ws-name');
+    const name = raw.replace(/\s+/g, ' ').trim();
+    const revert = (message) => {
+      title.textContent = this.name;
+      if (message) this.titleNote(message);
+    };
+    if (!name) return revert('A page needs a title.');
+    if (name === this.name) return revert();
+    if (name.length > 300) return revert('That title is too long.');
+    if (/[[\]|#]/.test(name)) return revert('Titles can’t contain [ ] | or #.');
+    title.classList.add('ws-name-busy');
+    try {
+      const existing = name.toLowerCase() === this.name.toLowerCase() ? null : await findExistingTitle(name).catch(() => null);
+      if (existing) return revert(`“${existing.name || name}” already exists. Choose another title.`);
+      this.saveNow();
+      const from = this.name;
+      const draft = drafts.get(from);
+      if (draft) drafts.set(name, draft);
+      drafts.clear(from);
+      this.name = name;
+      title.textContent = name;
+      document.title = `${name} — nLab`;
+      const u = new URL(location.href);
+      u.pathname = new URL(pageUrl(name), document.baseURI).pathname;
+      history.replaceState(history.state, '', u);
+      dispatchEvent(new CustomEvent('ws-rename', { detail: { from, to: name } }));
+      this.titleNote('Renamed.', true);
+    } finally {
+      title.classList.remove('ws-name-busy');
+    }
+  }
+
+  titleNote(message, ok = false) {
+    let note = $('.ws-title-note');
+    if (!note) {
+      note = document.createElement('span');
+      note.className = 'ws-title-note';
+      note.setAttribute('role', 'status');
+      $('.ws-title').append(note);
+    }
+    note.textContent = message;
+    note.classList.toggle('ok', ok);
+    note.hidden = false;
+    clearTimeout(this.noteTimer);
+    this.noteTimer = setTimeout(() => { note.hidden = true; }, ok ? 1600 : 4000);
+  }
+
+  insertSource(kind) {
+    if (kind !== 'image') return INSERTS[kind]?.();
+    const url = prompt('Image address (https://…)');
+    if (!url || !/^https?:\/\//i.test(url.trim())) return null;
+    const alt = prompt('Short description of the image (for screen readers)') || '';
+    return `![${alt.replace(/[\[\]]/g, '')}](${url.trim()})`;
+  }
+
+  // pinch on a trackpad (a wheel event with Ctrl) zooms the page smoothly, like in a document app
+  pinchZoom(e) {
+    if (!e.ctrlKey) return;
+    e.preventDefault();
+    const view = e.currentTarget;
+    const current = parseFloat(getComputedStyle(view).getPropertyValue('--paper-zoom')) || 1;
+    const next = Math.min(3, Math.max(0.25, current * Math.exp(-e.deltaY * 0.006)));
+    this.pendingZoom = Math.round(next * 100) / 100;
+    if (this.zoomFrame) return;
+    this.zoomFrame = requestAnimationFrame(() => {
+      this.zoomFrame = 0;
+      this.setZoom(String(this.pendingZoom));
+    });
+  }
+
+  // the paper zoom, chosen from the Fit width menu (or set by pinching)
+  setZoom(value) {
+    const zoom = $('#ws-zoom');
+    if (![...zoom.options].some((o) => o.value === value)) {
+      // a pinched zoom like 137%: one extra option holds it
+      let custom = zoom.querySelector('option[data-custom]');
+      if (!custom) { custom = document.createElement('option'); custom.dataset.custom = ''; zoom.append(custom); }
+      custom.value = value;
+      custom.textContent = `${Math.round(Number(value) * 100)}%`;
+    }
+    zoom.value = value;
+    $('#ws-zoom-label').textContent = zoom.selectedOptions[0]?.textContent.trim() || 'Fit width';
+    zoom.dispatchEvent(new Event('change'));
+  }
+
   openMenu(btn) {
     document.querySelector('.ws-menu')?.remove();
     const kind = btn.dataset.menu;
@@ -377,11 +615,15 @@ class Workspace {
     const menu = document.createElement('div');
     menu.className = 'ws-menu';
     menu.setAttribute('role', 'menu');
-    menu.innerHTML = items.map(([v, label, note, icon], i) => `<button type="button" role="menuitem" data-v="${v}" tabindex="${i ? -1 : 0}"><i data-lucide="${icon}"></i><span><b>${label}</b>${note ? `<small>${note}</small>` : ''}</span></button>`).join('');
+    const current = kind === 'zoom' ? $('#ws-zoom').value : null;
+    menu.classList.toggle('ws-menu-compact', kind === 'zoom');
+    menu.innerHTML = items.map(([v, label, note, icon], i) => `<button type="button" role="${current ? 'menuitemradio' : 'menuitem'}"${current ? ` aria-checked="${v === current}"` : ''} data-v="${v}" tabindex="${i ? -1 : 0}"><i data-lucide="${icon}"></i><span><b>${label}</b>${note ? `<small>${note}</small>` : ''}</span>${v === current ? '<i data-lucide="check" class="ws-menu-check"></i>' : ''}</button>`).join('');
     document.body.append(menu);
     icons();
     const r = btn.getBoundingClientRect();
-    menu.style.left = `${Math.min(r.left, innerWidth - 280) + scrollX}px`;
+    // open under the button; near the right edge, line up with the button's right side instead
+    const left = r.left + menu.offsetWidth > innerWidth - 8 ? r.right - menu.offsetWidth : r.left;
+    menu.style.left = `${Math.max(8, left) + scrollX}px`;
     menu.style.top = `${r.bottom + 6 + scrollY}px`;
     btn.setAttribute('aria-expanded', 'true');
     const btns = [...menu.querySelectorAll('button')];
@@ -393,6 +635,7 @@ class Workspace {
       const b = ev.target.closest('[data-v]');
       if (!b) return;
       close();
+      if (kind === 'zoom') { this.setZoom(b.dataset.v); btn.focus(); return; }
       this.command(kind === 'break' ? b.dataset.v : kind, null, b.dataset.v);
     });
     menu.addEventListener('keydown', (ev) => {
@@ -485,7 +728,7 @@ class Workspace {
     $('#pub-open').href = `${ORIGIN}/nlab/${this.isNew ? 'new' : 'edit'}/${encodeName(this.name)}`;
     $('#pub-forum').href = `forum/?new=${encodeURIComponent(this.name)}`;
     $('#pub-copy').onclick = async () => {
-      try { await navigator.clipboard.writeText(this.source); $('#pub-copy span').textContent = 'Copied'; } catch { $('#pub-copy span').textContent = 'Copy failed: select the source in LaTeX mode'; }
+      try { await navigator.clipboard.writeText(nlabSource(this.source)); $('#pub-copy span').textContent = 'Copied'; } catch { $('#pub-copy span').textContent = 'Copy failed: select the source in LaTeX mode'; }
     };
     $('#pub-copy span').textContent = 'Copy page source';
     const done = (how) => { drafts.clear(this.name); dlg.close(); this.destroy(); this.onExit?.(how); };
@@ -543,5 +786,5 @@ export function pageSummary(source) {
   const p = [...box.querySelectorAll('p')].map((x) => x.textContent.replace(/\s+/g, ' ').trim()).find((t) => t.length > 40) || '';
   return p.length > 230 ? `${p.slice(0, 230).replace(/\s+\S*$/, '')}…` : p;
 }
-export const pageLinks = (source) => [...new Set([...source.replace(/\[\[!include[^\]]*\]\]/g, '').matchAll(/\[\[([^\]|#!][^\]|#]*)/g)]
+export const pageLinks = (source) => [...new Set([...withoutBibliography(source).replace(/\[\[!include[^\]]*\]\]/g, '').matchAll(/\[\[([^\]|#!][^\]|#]*)/g)]
   .map((m) => m[1].trim().toLowerCase()).filter(Boolean))].slice(0, 2000);

@@ -4,7 +4,7 @@
 //    with CORS headers; snapshot/nlab-index.json (scripts/mirror-index.mjs) maps names to its files.
 import { dbEnabled, getPage } from './db.js';
 import { isExcludedPage } from './page-visibility.js';
-import { cacheArticle, invalidateArticleCache, readArticleCache } from './article-cache.js';
+import { cacheArticle, invalidateArticleCache, readArticleCache, FRESH_FOR } from './article-cache.js';
 //  • Latest changes and the nForum: live through the Vite proxy in dev; in the static build from
 //    the snapshot written by scripts/snapshot.mjs.
 export const ORIGIN = 'https://ncatlab.org';
@@ -121,7 +121,11 @@ export async function fetchSource(name, { fresh = false } = {}) {
   if (isExcludedPage(name)) throw new PageNotFound(name);
   if (!fresh) {
     const cached = readArticleCache(name);
-    if (cached && !isExcludedPage(cached.name)) return cached;
+    if (cached && !isExcludedPage(cached.name)) {
+      // shown at once; if the saved copy is a few minutes old, refresh it quietly for next time
+      if (Date.now() - cached.cachedAt > FRESH_FOR) fetchSource(name, { fresh: true }).catch(() => {});
+      return cached;
+    }
   }
   const fromDb = await fromDatabase(name);
   if (isExcludedPage(fromDb?.name)) throw new PageNotFound(name);

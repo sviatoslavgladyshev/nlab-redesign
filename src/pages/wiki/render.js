@@ -6,6 +6,7 @@ import { fillPreview } from '../../ui/preview.js';
 import { $, $$ } from './shell.js';
 import { applyFocusRead } from './reading.js';
 import { dbEnabled, pagesExist } from '../../core/db.js';
+import { bibliographyText, parseBibliography } from '../../core/bibliography.js';
 
 const getSource = async (n) => (await fetchSource(n)).source;
 
@@ -163,7 +164,9 @@ function categoryChips(body) {
 
 export async function renderInto(body, src) {
   const expanded = await expandIncludes(src, getSource);
-  body.innerHTML = renderSource(expanded);
+  const bib = bibliographyText(expanded);
+  const bibliography = bib ? (await parseBibliography(bib).catch(() => ({ entries: [] }))).entries : undefined;
+  body.innerHTML = renderSource(expanded, { bibliography });
   clean(body);
   numberEnvs(body);
   resolveRefs(body);

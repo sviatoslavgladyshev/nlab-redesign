@@ -44,10 +44,7 @@ if (legacy) {
   else if (view === 'write') renderWrite();
   else if (view === 'suggestions') import('./suggestions.js').then(({ showSuggestions }) => showSuggestions()).catch((e) => showError('Suggestions', e));
   else if (view === 'profile' || view === 'profile/settings') {
-    withPageLoading('Loading your profile…', async () => {
-      const { showProfile } = await import('./profile.js');
-      await showProfile(view.endsWith('/settings'));
-    }).catch((e) => showError('Profile', e));
+    import('./profile.js').then(({ showProfile }) => showProfile(view.endsWith('/settings'))).catch((e) => showError('Profile', e));
   }
   else if (view === 'wiki' || view === '') location.replace(document.baseURI);
   else {

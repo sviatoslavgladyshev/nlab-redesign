@@ -117,9 +117,12 @@
     <div class="tg">
       <button type="button" class="menu-btn" data-menu="env" aria-haspopup="menu" title="Insert a theorem-like environment"><i data-lucide="plus"></i><span>Environment</span><i data-lucide="chevron-down"></i></button>
       <button type="button" class="menu-btn" data-menu="break" aria-haspopup="menu" aria-label="Insert break"><span>Break</span><i data-lucide="chevron-down"></i></button>
+      <button type="button" class="menu-btn" data-menu="insert" aria-haspopup="menu"><i data-lucide="plus"></i><span>Insert</span><i data-lucide="chevron-down"></i></button>
+      <button type="button" class="wide" data-ws="bibliography" aria-haspopup="dialog"><i data-lucide="book-open"></i><span>Bibliography</span></button>
     </div>
     <span class="tg-spacer"></span>
-    <select id="ws-zoom" aria-label="Paper zoom">
+    <button type="button" class="menu-btn ws-zoom-btn" data-menu="zoom" aria-haspopup="menu" aria-label="Paper zoom"><i data-lucide="zoom-in"></i><span id="ws-zoom-label">Fit width</span><i data-lucide="chevron-down"></i></button>
+    <select id="ws-zoom" aria-label="Paper zoom" hidden tabindex="-1">
       <option value="width">Fit width</option>
       <option value="page">Fit page</option>
       <option value=".5">50%</option>
@@ -151,6 +154,7 @@
         <div class="ws-src" id="ws-cm"></div>
         <div class="ws-prev-wrap">
           <div class="pdf-bar"><span class="ws-label">PDF preview</span><span class="pdf-count" id="pdf-count"></span>
+            <button type="button" class="tbtn sm" data-ws="titlepage" title="Set the title, author and date (\title, \author, \date)"><i data-lucide="type"></i><span>Title page</span></button>
             <button type="button" class="tbtn sm" data-ws="pdf"><i data-lucide="file-text"></i><span>Download PDF</span></button></div>
           <div class="ws-prev" id="ws-prev"></div>
         </div>

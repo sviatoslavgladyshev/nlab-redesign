@@ -8,11 +8,14 @@ import { $, params, setHero, btn, link, toast } from './shell.js';
 import { renderInto, renderContext, buildToc } from './render.js';
 import { applyFocusRead, focusOn, toggleReading } from './reading.js';
 import { isUntouchedStarter, starterSource } from './templates.js';
+import { swr } from '../../core/swr.js';
 
 // the editor (CodeMirror, KaTeX tooling…) is loaded only when someone opens it
 const openWorkspace = async (opts) => (await import('../editor/editor.js')).openWorkspace(opts);
 
 const state = { name: '', published: '', exists: true, showingDraft: false, meta: null, owner: false };
+// a new page renamed from the editor's title: follow it
+addEventListener('ws-rename', (e) => { if (state.name === e.detail.from) state.name = e.detail.to; });
 const isSandbox = (name) => /^sandbox(?:\d+)?$/i.test(String(name || '').trim());
 // new pages, sandboxes and pages started on this site are edited directly; other nLab pages take suggestions
 const canDirectEdit = (page = state) => !page.exists || isSandbox(page.name) || page.owner;
@@ -109,7 +112,12 @@ export async function renderArticle(requested) {
   }
   await renderContext(source);
   await showArticle(drafts.get(name) ? 'draft' : 'published');
-  if (state.exists) showRelated().then(showBacklinks);
+  if (state.exists) {
+    // ask for both at once; draw related pages first, then backlinks
+    const name = state.name;
+    swr(`back:${name.toLowerCase()}`, () => backlinks(name, 24)).catch(() => {});
+    showRelated().then(showBacklinks);
+  }
   if (location.hash) document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView();
 }
 
@@ -201,7 +209,7 @@ addEventListener('keydown', (e) => {
 async function showBacklinks() {
   if (!dbEnabled) return;
   let rows = [];
-  try { rows = await backlinks(state.name, 24); } catch { return; }
+  try { rows = await swr(`back:${state.name.toLowerCase()}`, () => backlinks(state.name, 24)); } catch { return; }
   if (!rows.length || state.showingDraft) return;
   document.querySelector('.a-backlinks:not(.a-related)')?.remove();
   const sec = document.createElement('section');
@@ -228,7 +236,7 @@ async function showSimilar(body) {
 async function showRelated() {
   if (!dbEnabled) return;
   let rows = [];
-  try { rows = await relatedPages(state.name, 8); } catch { return; }
+  try { rows = await swr(`rel:${state.name.toLowerCase()}`, () => relatedPages(state.name, 8)); } catch { return; }
   if (!rows.length || state.showingDraft) return;
   document.querySelector('.a-related')?.remove();
   const sec = document.createElement('section');

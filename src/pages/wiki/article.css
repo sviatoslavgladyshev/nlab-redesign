@@ -196,6 +196,8 @@ footer { margin-top: 0; }
 .a-body figure.nfig.f-left { float: left; margin: 0 1.5em 1em 0; max-width: 45%; }
 .a-body figure figcaption { font: 13px var(--ui); color: var(--muted); margin-top: 6px; }
 .a-body .center { text-align: center; }
+.bib-details { display: block; font-size: .9em; }
+.bib-references li { scroll-margin-top: 90px; }
 .align-left { text-align: left; }
 .align-center { text-align: center; }
 .align-right { text-align: right; }
@@ -415,3 +417,6 @@ html[data-mode="dark"] .a-body .a-cat { color: color-mix(in srgb, var(--c) 45%, 
 .a-body .a-similar a { padding: 7px 14px; border-radius: 999px; background: var(--tonal); color: var(--on-tonal) !important; font: 500 14px var(--ui); text-decoration: none !important; }
 .sr-meaning { color: #6b3fa0; } html[data-mode="dark"] .sr-meaning { color: #c58af9; } .a-related + .a-backlinks { margin-top: 28px; padding-top: 0; border-top: 0; }
 .sr-filters[hidden], .sr-help[hidden], .sr-explain[hidden], .sr-ftoggle em[hidden] { display: none !important; }
+/* placeholder rows while publications load */
+.w-skel { display: grid; gap: 8px; }
+.w-skel span { height: 52px; border-radius: 14px; background: linear-gradient(90deg, var(--paper-2) 25%, var(--rule) 50%, var(--paper-2) 75%); background-size: 200% 100%; animation: sr-shimmer 1.2s infinite linear; }

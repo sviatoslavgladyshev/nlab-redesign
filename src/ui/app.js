@@ -14,7 +14,7 @@ import {
   LogIn, Inbox, Hash, Plus, Send, ArrowLeft, MessageSquarePlus, Undo2, Redo2, Type, ChevronDown, PanelRight, Keyboard,
   CircleHelp, Trash2, ListTree, Omega, TextQuote, Clock, Dices, FilePlus2, CircleCheck, CloudUpload,
   AlignLeft, AlignCenter, AlignRight, AlignJustify, CornerDownLeft,
-  Play, Moon, Sun, BookText, Menu, User, Split, FlaskConical, Tag, SlidersHorizontal, Filter, MailCheck, CornerDownRight,
+  Play, Moon, Sun, BookText, Menu, User, Split, FlaskConical, Tag, SlidersHorizontal, Filter, MailCheck, CornerDownRight, Pilcrow, Heading3, Heading4, Mail, MoveHorizontal, Scan, ZoomIn, ZoomOut, Square, Table, Triangle, MoveRight, Image, Minus,
 } from 'lucide';
 
 const ICONS = {
@@ -27,7 +27,7 @@ const ICONS = {
   LogIn, Inbox, Hash, Plus, Send, ArrowLeft, MessageSquarePlus, Undo2, Redo2, Type, ChevronDown, PanelRight, Keyboard,
   CircleHelp, Trash2, ListTree, Omega, TextQuote, Clock, Dices, FilePlus2, CircleCheck, CloudUpload,
   AlignLeft, AlignCenter, AlignRight, AlignJustify, CornerDownLeft,
-  Play, Moon, Sun, BookText, Menu, User, Split, FlaskConical, Tag, SlidersHorizontal, Filter, MailCheck, CornerDownRight,
+  Play, Moon, Sun, BookText, Menu, User, Split, FlaskConical, Tag, SlidersHorizontal, Filter, MailCheck, CornerDownRight, Pilcrow, Heading3, Heading4, Mail, MoveHorizontal, Scan, ZoomIn, ZoomOut, Square, Table, Triangle, MoveRight, Image, Minus,
 };
 // Re-run after inserting markup that contains <i data-lucide="…">
 export const icons = () => createIcons({ icons: ICONS });
@@ -296,8 +296,21 @@ document.addEventListener('click', (e) => {
     if (!e.target.closest('.nav-mode')) return;
     const next = document.documentElement.dataset.mode === 'dark' ? 'light' : 'dark';
     const apply = () => { document.documentElement.dataset.mode = next; dispatchEvent(new CustomEvent('modechange', { detail: next })); };
-    try { localStorage.setItem('nlab-mode', next); } catch { /* private mode */ }
+    // picking the computer's own theme means "follow the computer" again; the other one is remembered
+    try { if (next === systemMode()) localStorage.removeItem('nlab-mode'); else localStorage.setItem('nlab-mode', next); } catch { /* private mode */ }
     if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) document.startViewTransition(apply); else apply();
+  });
+  // follow the computer's light/dark setting as it changes (e.g. at sunset), unless a mode was chosen here
+  const systemQuery = matchMedia('(prefers-color-scheme: dark)');
+  const systemMode = () => (systemQuery.matches ? 'dark' : 'light');
+  systemQuery.addEventListener('change', () => {
+    let chosen = null;
+    try { chosen = localStorage.getItem('nlab-mode'); } catch { /* ignore */ }
+    if (chosen === 'dark' || chosen === 'light') return;
+    const mode = systemMode();
+    if (document.documentElement.dataset.mode === mode) return;
+    document.documentElement.dataset.mode = mode;
+    dispatchEvent(new CustomEvent('modechange', { detail: mode }));
   });
   addEventListener('modechange', sync);
   sync();

@@ -5,40 +5,76 @@ import { esc } from '../../core/nlab.js';
 import { $, link, setHero } from './shell.js';
 import './profile.css';
 
-export async function showProfile(settings) {
+// Overview and Settings are two tabs of one page: switching between them is instant (no reload),
+// and both show the saved copy of your profile at once while a fresh one loads in the background.
+export async function showProfile(initialSettings) {
   const body = $('#a-body');
-  const title = settings ? 'Profile settings' : 'My profile';
   body.classList.add('loaded', 'is-search');
-  setHero({ title });
-  await initAuth();
+  let settings = initialSettings;
   let generation = 0;
+  let shown = null; // the profile currently on screen, to avoid redrawing over unsaved edits
+
+  const hero = () => {
+    setHero({ title: settings ? 'Profile settings' : 'Your profile', crumb: 'Profile', meta: '' });
+  };
+
+  function draw(user, profile, notice) {
+    hero(user, profile);
+    if (settings) showSettings(body, user, profile, notice);
+    else showOverview(body, user, profile);
+    shown = JSON.stringify(profile ?? null);
+  }
 
   async function render() {
     const request = ++generation;
-    const user = currentUser();
+    const user = currentUser() || (await initAuth(), currentUser());
+    if (request !== generation) return;
     if (!dbEnabled || !user) {
+      hero(null, null);
       body.innerHTML = dbEnabled
-        ? '<p>Sign in to view your profile.</p><button class="tbtn primary" type="button" data-acct="in">Sign in</button>'
-        : '<p>The account database is unavailable.</p>';
+        ? '<div class="profile-empty"><p>Sign in to see your profile, drafts and publications.</p><button class="tbtn primary" type="button" data-acct="in"><i data-lucide="log-in"></i><span>Sign in</span></button></div>'
+        : '<div class="profile-empty"><p>Accounts aren’t available right now.</p></div>';
+      icons();
       return;
     }
     const cached = cachedProfile(user);
-    if (!settings) showOverview(body, user, cached);
+    draw(user, cached);
     try {
-      const profile = await loadProfile(user);
+      const fresh = await loadProfile(user, { fresh: true });
       if (request !== generation || currentUser()?.id !== user.id) return;
-      if (settings) showSettings(body, user, profile);
-      else showOverview(body, user, profile);
+      // redraw only if something changed, and never over a settings form being edited
+      const editing = settings && body.querySelector('.profile-form')?.dataset.dirty;
+      if (JSON.stringify(fresh ?? null) !== shown && !editing) draw(user, fresh);
     } catch {
       if (request !== generation || currentUser()?.id !== user.id) return;
-      const notice = document.createElement('p');
-      notice.textContent = 'Profile storage is unavailable. Try again later.';
-      notice.setAttribute('role', 'status');
-      if (settings) showSettings(body, user, null, notice);
-      else body.prepend(notice);
+      if (cached === undefined || cached === null) {
+        const notice = document.createElement('p');
+        notice.className = 'profile-notice';
+        notice.textContent = 'Your profile couldn’t be loaded. Showing what we have; try again in a moment.';
+        notice.setAttribute('role', 'status');
+        if (settings) draw(user, null, notice); else body.prepend(notice);
+      }
     }
   }
 
+  // tabs: switch in place
+  body.addEventListener('click', (e) => {
+    const tab = e.target.closest('.profile-nav a, [data-tab-link]');
+    if (!tab || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    const next = tab.getAttribute('href').includes('settings');
+    if (next === settings) return;
+    settings = next;
+    history.pushState({ profile: settings }, '', new URL(settings ? 'profile/settings/' : 'profile/', document.baseURI));
+    const user = currentUser();
+    if (user) draw(user, cachedProfile(user)); else render();
+  });
+  addEventListener('popstate', () => {
+    if (!/\/profile\/?(settings\/?)?$/.test(location.pathname)) return;
+    settings = /settings\/?$/.test(location.pathname);
+    const user = currentUser();
+    if (user) draw(user, cachedProfile(user)); else render();
+  });
   addEventListener('account-change', render);
   await render();
 }
@@ -51,17 +87,17 @@ const profileNav = (settings) => `<nav class="profile-nav" aria-label="Profile">
 function showOverview(body, user, profile) {
   const name = profile?.display_name || displayName(user) || 'nLab member';
   const initials = name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
+  const hue = [...name].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
   body.innerHTML = `<div class="profile-layout">
     ${profileNav(false)}
     <section class="profile-card profile-identity" aria-label="Your profile">
-      <span class="profile-initials" aria-hidden="true">${esc(initials)}</span>
+      <span class="profile-initials" style="--h:${hue}" aria-hidden="true">${esc(initials)}</span>
       <div class="profile-person">
         <h2>${esc(name)}</h2>
-        <p>${esc(user.email || '')}</p>
-        ${profile?.affiliation ? `<p>${esc(profile.affiliation)}</p>` : ''}
-        ${profile?.bio ? `<p class="profile-bio">${esc(profile.bio)}</p>` : ''}
+        <p class="profile-sub">${esc([user.email, profile?.affiliation].filter(Boolean).join(' · '))}</p>
+        <p class="profile-bio">${profile?.bio ? esc(profile.bio) : '<span class="profile-muted">Add a short bio in Settings: what you work on, what you’d like to write about.</span>'}</p>
       </div>
-      ${link('Edit profile', 'pencil', 'profile/settings/', true)}
+      <a class="tbtn" href="profile/settings/" data-tab-link><i data-lucide="pencil"></i><span>Edit profile</span></a>
     </section>
     <section aria-labelledby="profile-work">
       <h2 id="profile-work">Your work</h2>
@@ -86,7 +122,7 @@ function activityLink(title, description, icon, href) {
 function showSettings(body, user, profile, notice) {
   body.innerHTML = `<div class="profile-layout profile-settings">
     ${profileNav(true)}
-    <form class="profile-form"${notice ? ' hidden' : ''}>
+    <form class="profile-form">
       <section class="profile-panel" aria-labelledby="profile-details">
         <h2 id="profile-details">Profile details</h2>
         <label>Display name<input name="display_name" required maxlength="80" autocomplete="name"></label>
@@ -125,6 +161,7 @@ function showSettings(body, user, profile, notice) {
   </div>`;
   const form = $('.profile-form', body);
   if (notice) form.before(notice);
+  form.addEventListener('input', () => { form.dataset.dirty = '1'; });
   const fields = form.elements;
   fields.display_name.value = profile?.display_name || displayName(user);
   fields.affiliation.value = profile?.affiliation || '';
@@ -150,6 +187,7 @@ function showSettings(body, user, profile, notice) {
         theme: fields.theme.value, focus_read: fields.focus_read.checked,
       });
       status.textContent = 'Settings saved.';
+      delete form.dataset.dirty;
     } catch (error) {
       status.textContent = error.message || 'Could not save settings.';
     } finally {

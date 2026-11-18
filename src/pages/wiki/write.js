@@ -83,6 +83,8 @@ export function renderWrite() {
   const draftSection = $('#drafts');
   renderDrafts();
   loadPublications($('#publication-list'));
+  // load the editor in the background, so opening a draft is instant
+  (window.requestIdleCallback || setTimeout)(() => import('../editor/editor.js').catch(() => {}));
   if (section) requestAnimationFrame(() => $(section)?.scrollIntoView({ block: 'start', behavior: 'instant' }));
   draftSection.addEventListener('keydown', (event) => {
     const menu = event.target.closest('.w-draft-menu[open]');
@@ -215,7 +217,8 @@ async function resumeEditor(name, section, push = true) {
   const entry = location.href;
   try {
     await withPageLoading('Opening the editor…', async () => {
-      const [{ openWorkspace }, article] = await Promise.all([import('../editor/editor.js'), loadArticle(name, { fresh: true })]);
+      // the draft is already here: open at once from the saved copy of the published page (refreshed in the background)
+      const [{ openWorkspace }, article] = await Promise.all([import('../editor/editor.js'), loadArticle(name)]);
       if (location.href === entry) openWorkspaceEditor(openWorkspace, articleEditorOptions(article), section, push);
     });
   } catch (error) {
@@ -274,7 +277,7 @@ function fetchPublications(userId, cacheKey) {
     const request = myPublications().then((pages) => {
       const visible = pages.filter((page) => !isExcludedPage(page.name));
       if (currentUser()?.id === userId) {
-        try { sessionStorage.setItem(cacheKey, JSON.stringify(visible)); } catch { /* storage unavailable */ }
+        try { localStorage.setItem(cacheKey, JSON.stringify(visible)); } catch { /* storage unavailable */ }
       }
       return visible;
     }).finally(() => publicationRequests.delete(userId));
@@ -304,11 +307,11 @@ async function loadPublications(list) {
   }
   const key = `nlab-publications:${user.id}`;
   let cached = null;
-  try { cached = JSON.parse(sessionStorage.getItem(key)); } catch { /* storage unavailable */ }
+  try { cached = JSON.parse(localStorage.getItem(key) || sessionStorage.getItem(key)); } catch { /* storage unavailable */ }
   if (Array.isArray(cached)) renderPublications(list, cached);
   else {
     delete list.dataset.rendered;
-    list.textContent = 'Loading publications…';
+    list.innerHTML = `<div class="w-skel" aria-label="Loading your publications">${'<span></span>'.repeat(3)}</div>`;
   }
   try {
     const pages = await fetchPublications(user.id, key);
